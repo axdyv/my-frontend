@@ -6,9 +6,16 @@ import matplotlib.pyplot as plt
 import math
 import os
 
-app = Flask(__name__)
-@app.route('/upload', methods=['POST'])
+from flask import Flask, request, jsonify
+import os
 
+app = Flask(__name__)
+
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+@app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
@@ -19,8 +26,16 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     if allowed_file(file.filename):
-        # Process the file (e.g., save it, perform some operation)
-        return jsonify({'message': 'File successfully uploaded'}), 200
+        # Save the file
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(file_path)
+        
+        return jsonify({
+            'message': 'File successfully uploaded',
+            'file_name': file.filename,
+            'file_size': os.path.getsize(file_path),
+            'file_path': file_path
+        }), 200
     else:
         return jsonify({'error': 'Invalid file type'}), 400
 
