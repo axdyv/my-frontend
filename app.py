@@ -19,7 +19,7 @@ def upload_file():
         return jsonify({'error': 'Invalid file type'}), 400
 
 def allowed_file(filename):
-    ALLOWED_EXTENSIONS = {'h5', 'hdf5', 'dcm', 'dicom'}
+    ALLOWED_EXTENSIONS = {'h5', 'hdf5', 'dcm', 'dicom', 'nii'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 if __name__ == '__main__':

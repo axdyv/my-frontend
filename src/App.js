@@ -38,7 +38,7 @@ function App() {
         <input
           type="file"
           onChange={handleFileChange}
-          accept=".h5,.hdf5,.dcm,.dicom"
+          accept=".h5,.hdf5,.dcm,.dicom,.nii"
         />
         <button onClick={handleUpload}>Upload File</button>
       </header>
