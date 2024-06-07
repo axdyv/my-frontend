@@ -6,9 +6,6 @@ import matplotlib.pyplot as plt
 import math
 import os
 
-from flask import Flask, request, jsonify
-import os
-
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'uploads'
@@ -17,8 +14,9 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
+    # Check if the 'file' key is in the request and if multiple files are present
+    if 'file' not in request.files or len(request.files) != 1:
+        return jsonify({'error': 'Please upload exactly one file'}), 400
     
     file = request.files['file']
     
@@ -46,6 +44,7 @@ def allowed_file(filename):
 if __name__ == '__main__':
     app.run(debug=True)
 
+# Example function for processing HDF5 files (add your processing functions as needed)
 pathToDataset = dict()
 
 def traverse_hdf5(name, obj):
@@ -83,8 +82,8 @@ def traverse_hdf5(name, obj):
             imageDatasetHandling(obj, nameForSaving)
         # numpy data to be saved
         elif (obj.ndim >= 2):
-          currentDict[folders[i]] += "Data.npy"
-          np.save(currentDict[folders[i]], np.array(obj))
+            currentDict[folders[i]] += "Data.npy"
+            np.save(currentDict[folders[i]], np.array(obj))
         # labeling purposes, is num classes needed
         elif (obj.ndim == 1):
             currentDict[folders[i]] += "Labels.json"
@@ -95,20 +94,20 @@ def traverse_hdf5(name, obj):
             image_filenames = []
             label_dict = dict()
             while i < numImages:
-              if isinstance(labels[0], bytes):
-                # print('entered successfully')
-                # labelsNew.append(labels[i].decode())
-                image_filenames.append(f"img{i}.jpg")
-                label_dict[image_filenames[i]] = labels[i].decode()
-              elif isinstance(labels[i], str):
-                image_filenames.append(f"img{i}.jpg")
-                label_dict[image_filenames[i]] = labels[i]
-              else:
-                image_filenames.append(f"img{i}.jpg")
-                label_dict[image_filenames[i]] = int(labels[i])
-              i += 1
+                if isinstance(labels[0], bytes):
+                    # print('entered successfully')
+                    # labelsNew.append(labels[i].decode())
+                    image_filenames.append(f"img{i}.jpg")
+                    label_dict[image_filenames[i]] = labels[i].decode()
+                elif isinstance(labels[i], str):
+                    image_filenames.append(f"img{i}.jpg")
+                    label_dict[image_filenames[i]] = labels[i]
+                else:
+                    image_filenames.append(f"img{i}.jpg")
+                    label_dict[image_filenames[i]] = int(labels[i])
+                i += 1
             with open(nameForSaving + "Labels.json", 'w') as json_file:
-              json.dump(label_dict, json_file, indent=True)
+                json.dump(label_dict, json_file, indent=True)
 
     elif isinstance(obj, h5py.Datatype):
         print("This is a datatype.")
@@ -116,7 +115,7 @@ def traverse_hdf5(name, obj):
 
 def imageDatasetHandling(dataset, folderName):
     if not os.path.exists(folderName):
-      os.makedirs(folderName)
+        os.makedirs(folderName)
 
     dataset = np.array(dataset)
     dataset = np.abs(dataset)
@@ -125,61 +124,59 @@ def imageDatasetHandling(dataset, folderName):
 
     # check if dataset values are in 0-1 range or 0-255 range, using random int
     if (dataset.ndim == 2):
-      i = 0
-      while (i < 10):
-        r = np.random.randint(0, dataset.shape[0])
-        c = np.random.randint(0, dataset.shape[1])
-        value = dataset[r][c]
-        if (value > 1):
-            scaleDown = True
-            break
-        i += 1
+        i = 0
+        while (i < 10):
+            r = np.random.randint(0, dataset.shape[0])
+            c = np.random.randint(0, dataset.shape[1])
+            value = dataset[r][c]
+            if (value > 1):
+                scaleDown = True
+                break
+            i += 1
     elif (dataset.ndim == 3):
-      i = 0
-      while (i < 10):
-        r = np.random.randint(0, dataset.shape[0])
-        c = np.random.randint(0, dataset.shape[1])
-        d = np.random.randint(0, dataset.shape[2])
-        value = dataset[r][c][d]
-        if (value > 1):
-            scaleDown = True
-            break
-        i += 1
+        i = 0
+        while (i < 10):
+            r = np.random.randint(0, dataset.shape[0])
+            c = np.random.randint(0, dataset.shape[1])
+            d = np.random.randint(0, dataset.shape[2])
+            value = dataset[r][c][d]
+            if (value > 1):
+                scaleDown = True
+                break
+            i += 1
     elif (dataset.ndim == 4):
-      if (dataset.shape[3] == 1):
-        dataset = np.repeat(dataset, 3, axis=-1)
-      i = 0
-      while (i < 10):
-        r = np.random.randint(0, dataset.shape[0])
-        c = np.random.randint(0, dataset.shape[1])
-        d = np.random.randint(0, dataset.shape[2])
-        z = np.random.randint(0, dataset.shape[3])
-        value = dataset[r][c][d][z]
-        if (value > 1):
-            scaleDown = True
-            break
-        i += 1
+        if (dataset.shape[3] == 1):
+            dataset = np.repeat(dataset, 3, axis=-1)
+        i = 0
+        while (i < 10):
+            r = np.random.randint(0, dataset.shape[0])
+            c = np.random.randint(0, dataset.shape[1])
+            d = np.random.randint(0, dataset.shape[2])
+            z = np.random.randint(0, dataset.shape[3])
+            value = dataset[r][c][d][z]
+            if (value > 1):
+                scaleDown = True
+                break
+            i += 1
 
     if (scaleDown):
-      dataset = dataset/255
+        dataset = dataset/255
     sizeOfDataset = dataset.shape[0]
     i = 0
     while (i < sizeOfDataset):
-      image = dataset[i]
-      if (dataset.ndim == 2):
-          image = dataset[i].reshape(int(math.sqrt(dataset.shape[1])), int(math.sqrt(dataset.shape[1])))
-      plt.imsave(os.path.join(folderName, f"img{i}.jpg"), image)
-      i += 1
-      # cv2_imshow(trainData[i])
-      # cv2.waitKey(4)
+        image = dataset[i]
+        if (dataset.ndim == 2):
+            image = dataset[i].reshape(int(math.sqrt(dataset.shape[1])), int(math.sqrt(dataset.shape[1])))
+        plt.imsave(os.path.join(folderName, f"img{i}.jpg"), image)
+        i += 1
+        # cv2_imshow(trainData[i])
+        # cv2.waitKey(4)
 
+# Example usage (this would normally be in a separate script or triggered by a different endpoint)
 pathToDataset = dict()
 filename = "/content/usps.h5"
 file = h5py.File(filename, 'r')
-
-# print(file.get('images')[0])
-
 file.visititems(traverse_hdf5)
 
 with open('nestedDict.json', 'w') as json_file:
-   json.dump(pathToDataset, json_file, indent=True)
+    json.dump(pathToDataset, json_file, indent=True)
