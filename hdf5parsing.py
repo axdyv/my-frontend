@@ -6,20 +6,20 @@ import matplotlib.pyplot as plt
 import math
 import os
 
-from flask import Flask, request, jsonify
-import os
-
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'output'
 if not os.path.exists(UPLOAD_FOLDER):
-  os.makedirs(UPLOAD_FOLDER)
+    os.makedirs(UPLOAD_FOLDER)
+if not os.path.exists(OUTPUT_FOLDER):
+    os.makedirs(OUTPUT_FOLDER)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    print("uploaddd")
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
+    print("Upload request received")
+    if 'file' not in request.files or len(request.files) != 1:
+        return jsonify({'error': 'Please upload exactly one file'}), 400
     
     file = request.files['file']
     
@@ -27,15 +27,15 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     if allowed_file(file.filename):
-        # Save the file
+        # Save the uploaded file
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-
         file.save(file_path)
 
+        # Process the uploaded file
         mainMethod(file_path)
         
         return jsonify({
-            'message': 'File successfully uploaded',
+            'message': 'File successfully uploaded and processed',
             'file_name': file.filename,
             'file_size': os.path.getsize(file_path),
             'file_path': file_path
@@ -43,144 +43,79 @@ def upload_file():
     else:
         return jsonify({'error': 'Invalid file type'}), 400
 
-path = dict()
+def mainMethod(file_path):
+    path_to_dataset = {}
+    with h5py.File(file_path, 'r') as file:
+        file.visititems(lambda name, obj: traverse_hdf5(name, obj, path_to_dataset))
+    
+    output_json_path = os.path.join(OUTPUT_FOLDER, 'nestedDict.json')
+    with open(output_json_path, 'w') as json_file:
+        json.dump(path_to_dataset, json_file, indent=True)
 
-def mainMethod(nameOfFile):
-  filename = nameOfFile
-  file = h5py.File(filename, 'r')
-
-  file.visititems(traverse_hdf5)
-
-  with open('nestedDict.json', 'w') as json_file:
-    json.dump(path, json_file, indent=True)
-
-pathToDataset = path
-
-def traverse_hdf5(name, obj):
-    print("traverse called")
-    """
-    Function to print the name of the object and its type.
-    """
-    print(f"Name: {name}")
+def traverse_hdf5(name, obj, path_to_dataset):
+    print(f"Traversing: {name}")
     if isinstance(obj, h5py.Group):
-        # path
+        # Traverse the group and create a dictionary path
         if '/' in name:
-            currentDict = pathToDataset
-            i = 0
+            current_dict = path_to_dataset
             folders = name.split('/')
-            while i < len(folders) - 1:
-                currentDict = pathToDataset[folders[i]]
-                i += 1
-            currentDict[folders[i]] = dict()
+            for folder in folders[:-1]:
+                current_dict = current_dict.setdefault(folder, {})
+            current_dict[folders[-1]] = {}
         else:
-            pathToDataset[name] = dict()
+            path_to_dataset[name] = {}
     elif isinstance(obj, h5py.Dataset):
-        currentDict = pathToDataset
-        i = 0
+        current_dict = path_to_dataset
         folders = name.split('/')
-        nameForSaving = ""
-        while i < len(folders) - 1:
-            currentDict = currentDict[folders[i]]
-            nameForSaving += folders[i]
-            i += 1
-        nameForSaving += folders[i]
-        currentDict[folders[i]] = nameForSaving
-        # could be for image data or corresponding labels
+        for folder in folders[:-1]:
+            current_dict = current_dict.setdefault(folder, {})
+        dataset_name = folders[-1]
+
         if (("X" in name or "data" in name or "image" in name) and obj.ndim >= 2):
-            currentDict[folders[i]] += "Images"
-            # send to image handling
-            imageDatasetHandling(obj, nameForSaving)
-        # numpy data to be saved
-        elif (obj.ndim >= 2):
-          currentDict[folders[i]] += "Data.npy"
-          np.save(currentDict[folders[i]], np.array(obj))
-        # labeling purposes, is num classes needed
-        elif (obj.ndim == 1):
-            currentDict[folders[i]] += "Labels.json"
-            labels = np.array(obj)
-            labelsNew = []
-            numImages = obj.shape[0]
-            i = 0
-            image_filenames = []
-            label_dict = dict()
-            while i < numImages:
-              if isinstance(labels[0], bytes):
-                # print('entered successfully')
-                # labelsNew.append(labels[i].decode())
-                image_filenames.append(f"img{i}.jpg")
-                label_dict[image_filenames[i]] = labels[i].decode()
-              elif isinstance(labels[i], str):
-                image_filenames.append(f"img{i}.jpg")
-                label_dict[image_filenames[i]] = labels[i]
-              else:
-                image_filenames.append(f"img{i}.jpg")
-                label_dict[image_filenames[i]] = int(labels[i])
-              i += 1
-            with open(nameForSaving + "Labels.json", 'w') as json_file:
-              json.dump(label_dict, json_file, indent=True)
+            image_folder = os.path.join(OUTPUT_FOLDER, dataset_name + "Images")
+            os.makedirs(image_folder, exist_ok=True)
+            imageDatasetHandling(obj, image_folder)
+            current_dict[dataset_name] = image_folder
+        elif obj.ndim >= 2:
+            data_path = os.path.join(OUTPUT_FOLDER, dataset_name + "Data.npy")
+            np.save(data_path, np.array(obj))
+            current_dict[dataset_name] = data_path
+        elif obj.ndim == 1:
+            labels_path = os.path.join(OUTPUT_FOLDER, dataset_name + "Labels.json")
+            save_labels(obj, labels_path)
+            current_dict[dataset_name] = labels_path
 
-    elif isinstance(obj, h5py.Datatype):
-        print("This is a datatype.")
-    print()  # For better readability
+def save_labels(obj, labels_path):
+    labels = np.array(obj)
+    num_images = labels.shape[0]
+    label_dict = {}
 
-def imageDatasetHandling(dataset, folderName):
-    if not os.path.exists(folderName):
-      os.makedirs(folderName)
+    for i in range(num_images):
+        if isinstance(labels[i], bytes):
+            label = labels[i].decode()
+        elif isinstance(labels[i], str):
+            label = labels[i]
+        else:
+            label = int(labels[i])
+        label_dict[f"img{i}.jpg"] = label
 
+    with open(labels_path, 'w') as json_file:
+        json.dump(label_dict, json_file, indent=True)
+
+def imageDatasetHandling(dataset, folder_name):
     dataset = np.array(dataset)
     dataset = np.abs(dataset)
+    scale_down = np.max(dataset) > 1
 
-    scaleDown = False
-
-    # check if dataset values are in 0-1 range or 0-255 range, using random int
-    if (dataset.ndim == 2):
-      i = 0
-      while (i < 10):
-        r = np.random.randint(0, dataset.shape[0])
-        c = np.random.randint(0, dataset.shape[1])
-        value = dataset[r][c]
-        if (value > 1):
-            scaleDown = True
-            break
-        i += 1
-    elif (dataset.ndim == 3):
-      i = 0
-      while (i < 10):
-        r = np.random.randint(0, dataset.shape[0])
-        c = np.random.randint(0, dataset.shape[1])
-        d = np.random.randint(0, dataset.shape[2])
-        value = dataset[r][c][d]
-        if (value > 1):
-            scaleDown = True
-            break
-        i += 1
-    elif (dataset.ndim == 4):
-      if (dataset.shape[3] == 1):
-        dataset = np.repeat(dataset, 3, axis=-1)
-      i = 0
-      while (i < 10):
-        r = np.random.randint(0, dataset.shape[0])
-        c = np.random.randint(0, dataset.shape[1])
-        d = np.random.randint(0, dataset.shape[2])
-        z = np.random.randint(0, dataset.shape[3])
-        value = dataset[r][c][d][z]
-        if (value > 1):
-            scaleDown = True
-            break
-        i += 1
-
-    if (scaleDown):
-      dataset = dataset/255
-    sizeOfDataset = dataset.shape[0]
-    i = 0
-    while (i < sizeOfDataset):
-      image = dataset[i]
-      if (dataset.ndim == 2):
-          image = dataset[i].reshape(int(math.sqrt(dataset.shape[1])), int(math.sqrt(dataset.shape[1])))
-      plt.imsave(os.path.join(folderName, f"img{i}.jpg"), image)
-      i += 1
-      # cv2_imshow(trainData[i])
-      # cv2.waitKey(4)
+    if scale_down:
+        dataset = dataset / 255.0
+    
+    size_of_dataset = dataset.shape[0]
+    for i in range(size_of_dataset):
+        image = dataset[i]
+        if dataset.ndim == 2:
+            image = image.reshape(int(math.sqrt(dataset.shape[1])), int(math.sqrt(dataset.shape[1])))
+        plt.imsave(os.path.join(folder_name, f"img{i}.jpg"), image)
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'h5', 'hdf5', 'dcm', 'dicom', 'nii'}
