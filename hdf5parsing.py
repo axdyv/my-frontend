@@ -27,8 +27,10 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     if allowed_file(file.filename):
+        print("allowed file")
         # Save the uploaded file
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        print(file_path)
         file.save(file_path)
 
         # Process the uploaded file
@@ -66,22 +68,24 @@ def traverse_hdf5(name, obj, path_to_dataset):
             path_to_dataset[name] = {}
     elif isinstance(obj, h5py.Dataset):
         current_dict = path_to_dataset
+        filePath = ""
         folders = name.split('/')
         for folder in folders[:-1]:
             current_dict = current_dict.setdefault(folder, {})
+            filePath = filePath + folder
         dataset_name = folders[-1]
 
         if (("X" in name or "data" in name or "image" in name) and obj.ndim >= 2):
-            image_folder = os.path.join(OUTPUT_FOLDER, dataset_name + "Images")
+            image_folder = os.path.join(OUTPUT_FOLDER, filePath + dataset_name + "Images")
             os.makedirs(image_folder, exist_ok=True)
             imageDatasetHandling(obj, image_folder)
             current_dict[dataset_name] = image_folder
         elif obj.ndim >= 2:
-            data_path = os.path.join(OUTPUT_FOLDER, dataset_name + "Data.npy")
+            data_path = os.path.join(OUTPUT_FOLDER, filePath + dataset_name + "Data.npy")
             np.save(data_path, np.array(obj))
             current_dict[dataset_name] = data_path
         elif obj.ndim == 1:
-            labels_path = os.path.join(OUTPUT_FOLDER, dataset_name + "Labels.json")
+            labels_path = os.path.join(OUTPUT_FOLDER, filePath + dataset_name + "Labels.json")
             save_labels(obj, labels_path)
             current_dict[dataset_name] = labels_path
 
