@@ -81,8 +81,8 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Welcome to My Single-Page Website</h1>
-        <p>This is a simple single-page application built with React.</p>
+        <h1>HDF5/DICOM File Viewer</h1>
+        <p>Please upload an HDF5 or DICOM file</p>
         <input
           type="file"
           onChange={handleFileChange}
