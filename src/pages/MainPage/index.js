@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import CustomFileUpload from '../../components/CustomFIleUploadField';
 import Button from '@mui/material/Button';
+import { Paper } from '@mui/material'
 
 function MainPage() {
   
@@ -14,18 +15,18 @@ function MainPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleHDF5FileChange = (event) => {
-    setSelectedHDF5File(event.target.files[0]);
+  const handleHDF5FileChange = (files) => {
+    setSelectedHDF5File(files);
   };
 
-  const handleDICOMFolderChange = (event) => {
-    setSelectedDICOMFolder(event.target.files[0]);
+  const handleDICOMFolderChange = (files) => {
+    setSelectedDICOMFolder(files);
   };
 
   const handleHDF5Upload = () => {
     if (selectedHDF5File) {
       const formData = new FormData();
-      formData.append('file', selectedHDF5File);
+      formData.append('file', selectedHDF5File[0]);
 
       setLoading(true);
       axios.post('http://127.0.0.1:5000/upload', formData, {
@@ -52,7 +53,7 @@ function MainPage() {
   const handleDICOMUpload = () => {
     if (selectedDICOMFolder) {
       const formData = new FormData();
-      formData.append('file', selectedDICOMFolder);
+      formData.append('file', selectedDICOMFolder[0]);
 
       setLoading(true);
       axios.post('http://127.0.0.1:5000/upload', formData, {
@@ -217,11 +218,11 @@ function MainPage() {
       
       <div style={{display: 'flex', justifyContent: 'space-between', width: '100%'}}>
       
-        <div style={{width: '100%', margin: '0px 12px'}}>
+        <Paper elevation={3} style={{width: '100%', margin: '0px 12px', padding: '12px'}}>
           <div>
             <h2>Upload HDF5 File</h2>
             <CustomFileUpload files={selectedHDF5File} setFiles={handleHDF5FileChange} accept={'.h5,.hdf5'}/>
-            <Button onClick={() => handleHDF5Upload()} variant="contained">Upload HDF5 File</Button>    
+            <Button onClick={() => handleHDF5Upload()} variant="contained" style={{width: '100%'}}>Upload HDF5 File</Button>    
           </div>
           <div className="output-section">
             <h2>Output HDF5 Files</h2>
@@ -247,13 +248,13 @@ function MainPage() {
               })}
             </ul>
           </div>      
-        </div>    
+        </Paper>    
             
-        <div style={{width: '100%', margin: '0px 12px'}}>
+        <Paper elevation={3} style={{width: '100%', margin: '0px 12px', padding: '12px'}}>
           <div>
             <h2>Upload DICOM Folder</h2>
             <CustomFileUpload files={selectedDICOMFolder} setFiles={handleDICOMFolderChange} accept={'.dcm,.dicom'}/>
-            <Button onClick={() => handleDICOMUpload()} variant="contained">Upload DICOM Folder</Button>  
+            <Button onClick={() => handleDICOMUpload()} variant="contained" style={{width:"100%"}}>Upload DICOM Folder</Button>  
           </div>
           <div className="output-section">
             <h2>Output DICOM Files</h2>
@@ -279,7 +280,7 @@ function MainPage() {
               })}
             </ul>
           </div> 
-        </div>
+        </Paper>
 
       </div>
     </React.Fragment>
