@@ -1,4 +1,4 @@
-from flask import Flask, request, send_from_directory, jsonify
+from flask import Flask, request, send_from_directory, jsonify, send_file
 from flask_cors import CORS, cross_origin
 import h5py
 import json
@@ -6,11 +6,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import os
+import shutil
+from io import BytesIO
+import zipfile
 
 app = Flask(__name__)
 CORS(app)
 @cross_origin(origin='*')
-
 
 @app.route('/output-files', methods=['GET'])
 def list_output_files():
@@ -28,6 +30,26 @@ def list_output_files():
 def get_output_file(filename):
     print("made into get output")
     return send_from_directory('output', filename)
+
+@app.route('/output-files/download-folder', methods=['GET'])
+def download_folder():
+    folder_path = request.args.get('folder')
+    if not folder_path:
+        return jsonify({'error': 'Folder parameter is required'}), 400
+
+    folder_path = os.path.join('output', folder_path)
+    if not os.path.isdir(folder_path):
+        return jsonify({'error': 'Folder not found'}), 404
+
+    memory_file = BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                zf.write(file_path, os.path.relpath(file_path, folder_path))
+
+    memory_file.seek(0)
+    return send_file(memory_file, mimetype='application/zip', as_attachment=True, download_name=f'{os.path.basename(folder_path)}.zip')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
