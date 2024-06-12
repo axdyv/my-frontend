@@ -14,18 +14,18 @@ function MainPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleHDF5FileChange = (event) => {
-    setSelectedHDF5File(event.target.files[0]);
+  const handleHDF5FileChange = (files) => {
+    setSelectedHDF5File(files);
   };
 
-  const handleDICOMFolderChange = (event) => {
-    setSelectedDICOMFolder(event.target.files[0]);
+  const handleDICOMFolderChange = (files) => {
+    setSelectedDICOMFolder(files);
   };
 
   const handleHDF5Upload = () => {
     if (selectedHDF5File) {
       const formData = new FormData();
-      formData.append('file', selectedHDF5File);
+      formData.append('file', selectedHDF5File[0]);
 
       setLoading(true);
       axios.post('http://127.0.0.1:5000/upload', formData, {
@@ -52,7 +52,7 @@ function MainPage() {
   const handleDICOMUpload = () => {
     if (selectedDICOMFolder) {
       const formData = new FormData();
-      formData.append('file', selectedDICOMFolder);
+      formData.append('file', selectedDICOMFolder[0]);
 
       setLoading(true);
       axios.post('http://127.0.0.1:5000/upload', formData, {
