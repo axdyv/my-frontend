@@ -253,7 +253,7 @@ function MainPage() {
         <Paper elevation={3} style={{width: '100%', margin: '0px 12px', padding: '12px'}}>
           <div>
             <h2>Upload DICOM Folder</h2>
-            <CustomFileUpload files={selectedDICOMFolder} setFiles={handleDICOMFolderChange} accept={'.dcm,.dicom'}/>
+            <CustomFileUpload files={selectedDICOMFolder} setFiles={handleDICOMFolderChange} accept={'.zip'}/>
             <Button onClick={() => handleDICOMUpload()} variant="contained" style={{width:"100%"}}>Upload DICOM Folder</Button>  
           </div>
           <div className="output-section">

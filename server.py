@@ -66,8 +66,17 @@ def upload_file():
         file_path = os.path.join('uploads', file.filename)
         file.save(file_path)
 
-        mainHDF5Method(file_path)
-        mainDICOMMethod(file_path, 'output')
+        HDF5Extensions = {'.hdf5', '.h5'}
+        DCMExtensions = {'.dcm', '.dicom', '.nii', '.nii.gz'}
+        if (file.filename.rsplit('.', 1)[1].lower() in HDF5Extensions):
+            mainHDF5Method(file_path)
+        else:
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall('uploads/dicomImages')
+                zip_ref.close()
+            
+                if (uploads[0].filename.rsplit('.', 1)[1].lower() in DCMExtensions):
+                    mainDICOMMethod('uploads/dicomImages', 'output')
 
         return jsonify({
             'message': 'File successfully uploaded and processed',
@@ -277,7 +286,7 @@ def imageDatasetHandling(dataset, folder_name):
         plt.imsave(os.path.join(folder_name, f"img{i}.jpg"), image)
 
 def allowed_file(filename):
-    ALLOWED_EXTENSIONS = {'h5', 'hdf5', 'dcm', 'dicom', 'nii'}
+    ALLOWED_EXTENSIONS = {'h5', 'hdf5', 'dcm', 'dicom', 'nii', 'zip'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 if __name__ == '__main__':
