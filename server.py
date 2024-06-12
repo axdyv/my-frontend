@@ -67,16 +67,14 @@ def upload_file():
         file.save(file_path)
 
         HDF5Extensions = {'.hdf5', '.h5'}
-        DCMExtensions = {'.dcm', '.dicom', '.nii', '.nii.gz'}
-        if (file.filename.rsplit('.', 1)[1].lower() in HDF5Extensions):
+        DCMExtensions = {'.dcm', '.dicom', '.nii', '.nii.gz', '.zip'}
+        if file.filename.lower().endswith(('.h5', '.hdf5')):
             mainHDF5Method(file_path)
         else:
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall('uploads/dicomImages')
-                zip_ref.close()
-            
-                if (uploads[0].filename.rsplit('.', 1)[1].lower() in DCMExtensions):
-                    mainDICOMMethod('uploads/dicomImages', 'output')
+                
+            mainDICOMMethod('/uploads/dicomImages/ADNI4-DICOM-nano-10514', 'output')
 
         return jsonify({
             'message': 'File successfully uploaded and processed',
@@ -143,14 +141,18 @@ def extract_nifti_metadata(nifti_path):
     return metadata
 
 def create_output_structure(input_folder, output_folder):
+    print("creating output structure")
     for root, dirs, files in os.walk(input_folder):
         for dir_name in dirs:
             relative_path = os.path.relpath(os.path.join(root, dir_name), input_folder)
             os.makedirs(os.path.join(output_folder, relative_path, 'image'), exist_ok=True)
+            print("image folder made")
             os.makedirs(os.path.join(output_folder, relative_path, 'meta'), exist_ok=True)
             os.makedirs(os.path.join(output_folder, relative_path, 'text'), exist_ok=True)
+    print("finished creating output structure")
 
 def process_files(input_folder, output_folder):
+    print("")
     for root, dirs, files in os.walk(input_folder):
         for file in files:
             file_path = os.path.join(root, file)
@@ -207,6 +209,7 @@ def process_files(input_folder, output_folder):
                     text_file.write(f'{{"{image_name}": "{os.path.basename(meta_output_path)}"}}\n')
 
 def mainDICOMMethod(input_folder, output_folder):
+    print("Made it into dicom :)")
     create_output_structure(input_folder, output_folder)
     process_files(input_folder, output_folder)
 
