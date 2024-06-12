@@ -8,7 +8,7 @@ const MainLayout = () => {
         <>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <Header />
-                <Box sx={{ display: 'flex', padding: { xs: '10px', sm: '14px 25px' }, width: '100vw' }}>
+                <Box sx={{ display: 'flex', padding: { xs: '10px', sm: '14px 25px' }, width: 'auto' }}>
                     <Outlet />
                 </Box>
             </div>
