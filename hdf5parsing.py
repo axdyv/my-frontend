@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, send_from_directory, jsonify
+from flask_cors import CORS, cross_origin
 import h5py
 import json
 import numpy as np
@@ -7,13 +8,26 @@ import math
 import os
 
 app = Flask(__name__)
+CORS(app)
+@cross_origin(origin='*')
 
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'output'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(OUTPUT_FOLDER):
-    os.makedirs(OUTPUT_FOLDER)
+
+@app.route('/output-files', methods=['GET'])
+def list_output_files():
+    UPLOAD_FOLDER = 'uploads'
+    OUTPUT_FOLDER = 'output'
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+    if not os.path.exists(OUTPUT_FOLDER):
+        os.makedirs(OUTPUT_FOLDER)
+    print("made into list output")
+    files = os.listdir('output')
+    return jsonify(files)
+
+@app.route('/output-files/<filename>', methods=['GET'])
+def get_output_file(filename):
+    print("made into get output")
+    return send_from_directory('output', filename)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -22,19 +36,17 @@ def upload_file():
         return jsonify({'error': 'Please upload exactly one file'}), 400
     
     file = request.files['file']
-    
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     
     if allowed_file(file.filename):
         print("allowed file")
         # Save the uploaded file
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file_path = os.path.join('uploads', file.filename)
         print(file_path)
         file.save(file_path)
-
-        # Process the uploaded file
-        mainMethod(file_path)
+    
+        mainHDF5Method(file_path)
         
         return jsonify({
             'message': 'File successfully uploaded and processed',
@@ -45,12 +57,12 @@ def upload_file():
     else:
         return jsonify({'error': 'Invalid file type'}), 400
 
-def mainMethod(file_path):
+def mainHDF5Method(file_path):
     path_to_dataset = {}
     with h5py.File(file_path, 'r') as file:
         file.visititems(lambda name, obj: traverse_hdf5(name, obj, path_to_dataset))
     
-    output_json_path = os.path.join(OUTPUT_FOLDER, 'nestedDict.json')
+    output_json_path = os.path.join('output', 'nestedDict.json')
     with open(output_json_path, 'w') as json_file:
         json.dump(path_to_dataset, json_file, indent=True)
 
@@ -76,16 +88,16 @@ def traverse_hdf5(name, obj, path_to_dataset):
         dataset_name = folders[-1]
 
         if (("X" in name or "data" in name or "image" in name) and obj.ndim >= 2):
-            image_folder = os.path.join(OUTPUT_FOLDER, filePath + dataset_name + "Images")
+            image_folder = os.path.join('output', filePath + dataset_name + "Images")
             os.makedirs(image_folder, exist_ok=True)
             imageDatasetHandling(obj, image_folder)
             current_dict[dataset_name] = image_folder
         elif obj.ndim >= 2:
-            data_path = os.path.join(OUTPUT_FOLDER, filePath + dataset_name + "Data.npy")
+            data_path = os.path.join('output', filePath + dataset_name + "Data.npy")
             np.save(data_path, np.array(obj))
             current_dict[dataset_name] = data_path
         elif obj.ndim == 1:
-            labels_path = os.path.join(OUTPUT_FOLDER, filePath + dataset_name + "Labels.json")
+            labels_path = os.path.join('output', filePath + dataset_name + "Labels.json")
             save_labels(obj, labels_path)
             current_dict[dataset_name] = labels_path
 
@@ -124,6 +136,11 @@ def imageDatasetHandling(dataset, folder_name):
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'h5', 'hdf5', 'dcm', 'dicom', 'nii'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# def extract_extension(filename):
+#     hdf5_extensions = {'h5', 'hdf5'}
+#     dcm_extensions = {'dcm', 'dicom', 'nii'}
+#     return '.' in filename and filename.rsplit('.', 1)[1].lower() in hdf5_extensions
 
 if __name__ == '__main__':
     app.run(debug=True)
