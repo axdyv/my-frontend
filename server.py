@@ -3,6 +3,8 @@ from flask_cors import CORS, cross_origin
 import h5py
 import json
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
 import os
@@ -19,11 +21,11 @@ CORS(app)
 @app.route('/output-files', methods=['GET'])
 @cross_origin()
 def list_output_files():
-    UPLOAD_FOLDER = 'uploads'
-    OUTPUT_FOLDER = 'output'
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    files = os.listdir(OUTPUT_FOLDER)
+    # UPLOAD_FOLDER = 'uploads'
+    # OUTPUT_FOLDER = 'output'
+    # os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    # os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+    files = os.listdir('output')
     return jsonify(files)
 
 @app.route('/output-files/<filename>', methods=['GET'])
@@ -55,6 +57,10 @@ def download_folder():
 @app.route('/upload', methods=['POST'])
 @cross_origin()
 def upload_file():
+    UPLOAD_FOLDER = 'uploads'
+    OUTPUT_FOLDER = 'output'
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     if 'file' not in request.files or len(request.files) != 1:
         return jsonify({'error': 'Please upload exactly one file'}), 400
 
