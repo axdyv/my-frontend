@@ -73,9 +73,16 @@ def upload_file():
         else:
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall('uploads/dicomImages')
+<<<<<<< HEAD
                 
             mainDICOMMethod('/uploads/dicomImages/ADNI4-DICOM-nano-10514', 'output')
 
+=======
+                zip_ref.close()
+            
+            mainDICOMMethod('uploads/dicomImages', 'output')
+                
+>>>>>>> c212938 (dicom change)
         return jsonify({
             'message': 'File successfully uploaded and processed',
             'file_name': file.filename,
