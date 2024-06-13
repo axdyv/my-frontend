@@ -57,6 +57,12 @@ def download_folder():
 @app.route('/upload', methods=['POST'])
 @cross_origin()
 def upload_file():
+    if (os.path.exists('output')):
+        shutil.rmtree('output')
+
+    if (os.path.exists('uploads')):
+        shutil.rmtree('uploads')
+
     UPLOAD_FOLDER = 'uploads'
     OUTPUT_FOLDER = 'output'
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
