@@ -2,78 +2,46 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import CustomFileUpload from '../../components/CustomFIleUploadField';
 import Button from '@mui/material/Button';
-import { Paper } from '@mui/material';
-import CircularProgress from '@mui/material/CircularProgress';
+import { Paper, FormControl, InputLabel, Select, MenuItem, CircularProgress } from '@mui/material';
 
 function MainPage() {
-  const [selectedHDF5File, setSelectedHDF5File] = useState(null);
-  const [selectedDICOMFolder, setSelectedDICOMFolder] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [outputHDF5Files, setOutputHDF5Files] = useState([]);
   const [outputDICOMFiles, setOutputDICOMFiles] = useState([]);
   const [currentHDF5Path, setCurrentHDF5Path] = useState('');
   const [currentDICOMPath, setCurrentDICOMPath] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fileType, setFileType] = useState('');
 
-  const handleHDF5FileChange = (files) => {
-    setSelectedHDF5File(files);
+  const handleFileChange = (files) => {
+    setSelectedFile(files);
   };
 
-  const handleDICOMFolderChange = (files) => {
-    setSelectedDICOMFolder(files);
-  };
-
-  const handleHDF5Upload = () => {
-    if (selectedHDF5File) {
+  const handleUpload = () => {
+    if (selectedFile) {
       const formData = new FormData();
-      formData.append('file', selectedHDF5File[0]);
+      formData.append('file', selectedFile[0]);
 
       setLoading(true);
-      axios.post('http://127.0.0.1:5000/upload', formData, {
+      axios.post(`http://127.0.0.1:5000/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         }
       })
       .then(response => {
-        console.log('HDF5 file upload successful:', response.data);
-        fetchOutputHDF5Files(); // Refresh the output files list after upload
+        console.log(`${fileType} file upload successful:`, response.data);
+        fileType === 'HDF5' ? fetchOutputHDF5Files() : fetchOutputDICOMFiles(); // Refresh the output files list after upload
       })
       .catch(error => {
-        console.error('Error uploading HDF5 file:', error);
-        setError('Error uploading HDF5 file.');
+        console.error(`Error uploading ${fileType} file:`, error);
+        setError(`Error uploading ${fileType} file.`);
       })
       .finally(() => {
         setLoading(false);
       });
     } else {
-      setError('No HDF5 file selected');
-    }
-  };
-
-  const handleDICOMUpload = () => {
-    if (selectedDICOMFolder) {
-      const formData = new FormData();
-      formData.append('file', selectedDICOMFolder[0]);
-
-      setLoading(true);
-      axios.post('http://127.0.0.1:5000/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
-      })
-      .then(response => {
-        console.log('DICOM folder upload successful:', response.data);
-        fetchOutputDICOMFiles(); // Refresh the output files list after upload
-      })
-      .catch(error => {
-        console.error('Error uploading DICOM folder:', error);
-        setError('Error uploading DICOM folder.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-    } else {
-      setError('No DICOM folder selected');
+      setError('No file selected');
     }
   };
 
@@ -219,72 +187,76 @@ function MainPage() {
 
         <Paper elevation={3} style={{width: '100%', margin: '0px 12px', padding: '12px'}}>
           <div>
-            <h2>Upload HDF5 File</h2>
-            <CustomFileUpload files={selectedHDF5File} setFiles={handleHDF5FileChange} accept={'.h5,.hdf5'}/>
-            <Button onClick={handleHDF5Upload} variant="contained" style={{width: '100%'}}>Upload HDF5 File</Button>
+            <h2>Upload File</h2>
+            <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'}/>
+            <FormControl fullWidth margin="normal">
+              <InputLabel id="file-type-label">File Type</InputLabel>
+              <Select
+                labelId="file-type-label"
+                value={fileType}
+                onChange={(e) => setFileType(e.target.value)}
+              >
+                <MenuItem value="HDF5">HDF5</MenuItem>
+                <MenuItem value="DICOM">DICOM</MenuItem>
+              </Select>
+            </FormControl>
+            <Button onClick={handleUpload} variant="contained" style={{width: '100%'}} disabled={!fileType}>
+              Upload File
+            </Button>
           </div>
           <div className="output-section">
-            <h2>Output HDF5 Files</h2>
-            {renderHDF5Breadcrumbs()}
-            {currentHDF5Path && <button onClick={handleHDF5BackClick}>Back</button>}
-            {outputHDF5Files.length === 0 ? (
-              <p>No HDF5 files available.</p>
+            <h2>Output {fileType === 'HDF5' ? 'HDF5' : 'DICOM'} Files</h2>
+            {fileType === 'HDF5' ? renderHDF5Breadcrumbs() : renderDICOMBreadcrumbs()}
+            {fileType === 'HDF5' && currentHDF5Path && <button onClick={handleHDF5BackClick}>Back</button>}
+            {fileType === 'DICOM' && currentDICOMPath && <button onClick={handleDICOMBackClick}>Back</button>}
+            {fileType === 'HDF5' ? (
+              outputHDF5Files.length === 0 ? (
+                <p>No HDF5 files available.</p>
+              ) : (
+                <ul>
+                  {outputHDF5Files.map((file, index) => {
+                    const isDirectory = !file.includes('.');
+                    return (
+                      <li key={index}>
+                        {isDirectory ? (
+                          <span onClick={() => handleHDF5DirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
+                        ) : (
+                          <>
+                            {file} <button onClick={() => downloadFile(file)}>Download</button>
+                          </>
+                        )}
+                        {isDirectory && (
+                          <button onClick={() => downloadFolder(file)}>Download Folder</button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
             ) : (
-              <ul>
-                {outputHDF5Files.map((file, index) => {
-                  const isDirectory = !file.includes('.');
-                  return (
-                    <li key={index}>
-                      {isDirectory ? (
-                        <span onClick={() => handleHDF5DirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
-                      ) : (
-                        <>
-                          {file} <button onClick={() => downloadFile(file)}>Download</button>
-                        </>
-                      )}
-                      {isDirectory && (
-                        <button onClick={() => downloadFolder(file)}>Download Folder</button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </Paper>
-
-        <Paper elevation={3} style={{width: '100%', margin: '0px 12px', padding: '12px'}}>
-          <div>
-            <h2>Upload DICOM Folder</h2>
-            <CustomFileUpload files={selectedDICOMFolder} setFiles={handleDICOMFolderChange} accept={'.zip'}/>
-            <Button onClick={handleDICOMUpload} variant="contained" style={{width:"100%"}}>Upload DICOM Folder</Button>
-          </div>
-          <div className="output-section">
-            <h2>Output DICOM Files</h2>
-            {renderDICOMBreadcrumbs()}
-            {currentDICOMPath && <button onClick={handleDICOMBackClick}>Back</button>}
-            {outputDICOMFiles.length === 0 ? (
-              <p>No DICOM files available.</p>
-            ) : (
-              <ul>
-                {outputDICOMFiles.map((file, index) => {
-                  const isDirectory = !file.includes('.');
-                  return (
-                    <li key={index}>
-                      {isDirectory ? (
-                        <span onClick={() => handleDICOMDirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
-                      ) : (
-                        <>
-                          {file} <button onClick={() => downloadFile(file)}>Download</button>
-                        </>
-                      )}
-                      {isDirectory && (
-                        <button onClick={() => downloadFolder(file)}>Download Folder</button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              outputDICOMFiles.length === 0 ? (
+                <p>No DICOM files available.</p>
+              ) : (
+                <ul>
+                  {outputDICOMFiles.map((file, index) => {
+                    const isDirectory = !file.includes('.');
+                    return (
+                      <li key={index}>
+                        {isDirectory ? (
+                          <span onClick={() => handleDICOMDirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
+                        ) : (
+                          <>
+                            {file} <button onClick={() => downloadFile(file)}>Download</button>
+                          </>
+                        )}
+                        {isDirectory && (
+                          <button onClick={() => downloadFolder(file)}>Download Folder</button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
             )}
           </div>
         </Paper>

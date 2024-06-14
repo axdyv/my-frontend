@@ -17,21 +17,33 @@ import nibabel as nib
 app = Flask(__name__)
 CORS(app)
 
+UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'output'
+
+def setup_folders():
+    if os.path.exists(OUTPUT_FOLDER):
+        shutil.rmtree(OUTPUT_FOLDER)
+    if os.path.exists(UPLOAD_FOLDER):
+        shutil.rmtree(UPLOAD_FOLDER)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
 # Upload/output Routes
 @app.route('/output-files', methods=['GET'])
 @cross_origin()
 def list_output_files():
-    # UPLOAD_FOLDER = 'uploads'
-    # OUTPUT_FOLDER = 'output'
-    # os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    # os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    files = os.listdir('output')
+    path = request.args.get('path', '')
+    directory = os.path.join(OUTPUT_FOLDER, path)
+    if not os.path.exists(directory):
+        return jsonify({'error': 'Directory not found'}), 404
+
+    files = os.listdir(directory)
     return jsonify(files)
 
 @app.route('/output-files/<filename>', methods=['GET'])
 @cross_origin()
 def get_output_file(filename):
-    return send_from_directory('output', filename)
+    return send_from_directory(OUTPUT_FOLDER, filename)
 
 @app.route('/output-files/download-folder', methods=['GET'])
 @cross_origin()
@@ -40,7 +52,7 @@ def download_folder():
     if not folder_path:
         return jsonify({'error': 'Folder parameter is required'}), 400
 
-    folder_path = os.path.join('output', folder_path)
+    folder_path = os.path.join(OUTPUT_FOLDER, folder_path)
     if not os.path.isdir(folder_path):
         return jsonify({'error': 'Folder not found'}), 404
 
@@ -57,16 +69,8 @@ def download_folder():
 @app.route('/upload', methods=['POST'])
 @cross_origin()
 def upload_file():
-    if (os.path.exists('output')):
-        shutil.rmtree('output')
+    setup_folders()
 
-    if (os.path.exists('uploads')):
-        shutil.rmtree('uploads')
-
-    UPLOAD_FOLDER = 'uploads'
-    OUTPUT_FOLDER = 'output'
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     if 'file' not in request.files or len(request.files) != 1:
         return jsonify({'error': 'Please upload exactly one file'}), 400
 
@@ -75,20 +79,17 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
 
     if allowed_file(file.filename):
-        file_path = os.path.join('uploads', file.filename)
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
 
-        HDF5Extensions = {'.hdf5', '.h5'}
-        DCMExtensions = {'.dcm', '.dicom', '.nii', '.nii.gz', '.zip'}
         if file.filename.lower().endswith(('.h5', '.hdf5')):
             mainHDF5Method(file_path)
         else:
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall('uploads/dicomImages')
-                zip_ref.close()
             
-            mainDICOMMethod('uploads/dicomImages', 'output')
-                
+            mainDICOMMethod('uploads/dicomImages', OUTPUT_FOLDER)
+
         return jsonify({
             'message': 'File successfully uploaded and processed',
             'file_name': file.filename,
@@ -154,18 +155,14 @@ def extract_nifti_metadata(nifti_path):
     return metadata
 
 def create_output_structure(input_folder, output_folder):
-    print("creating output structure")
     for root, dirs, files in os.walk(input_folder):
         for dir_name in dirs:
             relative_path = os.path.relpath(os.path.join(root, dir_name), input_folder)
             os.makedirs(os.path.join(output_folder, relative_path, 'image'), exist_ok=True)
-            print("image folder made")
             os.makedirs(os.path.join(output_folder, relative_path, 'meta'), exist_ok=True)
             os.makedirs(os.path.join(output_folder, relative_path, 'text'), exist_ok=True)
-    print("finished creating output structure")
 
 def process_files(input_folder, output_folder):
-    print("")
     for root, dirs, files in os.walk(input_folder):
         for file in files:
             file_path = os.path.join(root, file)
@@ -222,7 +219,6 @@ def process_files(input_folder, output_folder):
                     text_file.write(f'{{"{image_name}": "{os.path.basename(meta_output_path)}"}}\n')
 
 def mainDICOMMethod(input_folder, output_folder):
-    print("Made it into dicom :)")
     create_output_structure(input_folder, output_folder)
     process_files(input_folder, output_folder)
 

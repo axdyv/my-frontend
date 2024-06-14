@@ -21,7 +21,7 @@ const CustomFileUpload = (props) => {
                 value={files}
                 disabled={disabled}
                 accept={accept}
-                // This is turnery operator is so that we don't break other functionality
+                // This is the operator is so that we don't break other functionality
                 onChange={(pickedFiles) => setFiles(pickedFiles)}
                 buttonProps={{
                     variant: 'outlined',
