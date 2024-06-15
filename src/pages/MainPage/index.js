@@ -3,6 +3,7 @@ import axios from 'axios';
 import CustomFileUpload from '../../components/CustomFIleUploadField';
 import Button from '@mui/material/Button';
 import { Paper, FormControl, InputLabel, Select, MenuItem, CircularProgress } from '@mui/material';
+import Modal from 'react-modal';
 
 function MainPage() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -13,6 +14,9 @@ function MainPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fileType, setFileType] = useState('');
+
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
 
   const handleFileChange = (files) => {
     setSelectedFile(files);
@@ -127,6 +131,16 @@ function MainPage() {
     });
   };
 
+  const openModal = (file) => {
+    setPreviewFile(file);
+    setModalIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setPreviewFile(null);
+    setModalIsOpen(false);
+  };
+
   useEffect(() => {
     fetchOutputHDF5Files();
     fetchOutputDICOMFiles();
@@ -222,7 +236,8 @@ function MainPage() {
                           <span onClick={() => handleHDF5DirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
                         ) : (
                           <>
-                            {file} <button onClick={() => downloadFile(file)}>Download</button>
+                            <span onClick={() => openModal(`http://127.0.0.1:5000/output-files/${file}`)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
+                            <button onClick={() => downloadFile(file)}>Download</button>
                           </>
                         )}
                         {isDirectory && (
@@ -246,7 +261,8 @@ function MainPage() {
                           <span onClick={() => handleDICOMDirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
                         ) : (
                           <>
-                            {file} <button onClick={() => downloadFile(file)}>Download</button>
+                            <span onClick={() => openModal(`http://127.0.0.1:5000/output-files/${file}`)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
+                            <button onClick={() => downloadFile(file)}>Download</button>
                           </>
                         )}
                         {isDirectory && (
@@ -262,6 +278,21 @@ function MainPage() {
         </Paper>
 
       </div>
+
+      <Modal isOpen={modalIsOpen} onRequestClose={closeModal} contentLabel="File Preview">
+        <div style={{ textAlign: 'center' }}>
+          {previewFile && (
+            <div>
+              {previewFile.match(/.(jpeg|jpg|png|gif)$/i) ? (
+                <img src={previewFile} alt="Preview" style={{ maxWidth: '100%', maxHeight: '80vh' }} />
+              ) : (
+                <iframe src={previewFile} style={{ width: '100%', height: '80vh' }} title="File Preview"></iframe>
+              )}
+            </div>
+          )}
+          <button onClick={closeModal} style={{ marginTop: '20px' }}>Close</button>
+        </div>
+      </Modal>
     </React.Fragment>
   );
 }
