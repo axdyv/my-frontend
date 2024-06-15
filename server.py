@@ -28,6 +28,8 @@ def setup_folders():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+setup_folders()
+
 # Upload/output Routes
 @app.route('/output-files', methods=['GET'])
 @cross_origin()
