@@ -28,7 +28,6 @@ def setup_folders():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-setup_folders()
 
 # Upload/output Routes
 @app.route('/output-files', methods=['GET'])
@@ -100,6 +99,27 @@ def upload_file():
         }), 200
     else:
         return jsonify({'error': 'Invalid file type'}), 400
+
+@app.route('/output-files/folder-images', methods=['GET'])
+@cross_origin()
+def get_folder_images():
+    folder_path = request.args.get('folder')
+    if not folder_path:
+        app.logger.error("Folder parameter is required")
+        return jsonify({'error': 'Folder parameter is required'}), 400
+
+    full_folder_path = os.path.join(OUTPUT_FOLDER, folder_path, 'image')
+    app.logger.debug(f"Looking for images in: {full_folder_path}")
+
+    if not os.path.isdir(full_folder_path):
+        app.logger.error(f"Folder not found: {full_folder_path}")
+        return jsonify({'error': 'Folder not found'}), 404
+
+    image_files = [file for file in os.listdir(full_folder_path) if file.endswith(('.jpg', '.jpeg', '.png'))]
+    image_urls = [f"http://127.0.0.1:5000/output-files/{os.path.join(folder_path, 'image', file)}" for file in image_files]
+
+    app.logger.debug(f"Image URLs: {image_urls}")
+    return jsonify(image_urls)
 
 # End of Upload/Output routes
 

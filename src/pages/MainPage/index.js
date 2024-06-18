@@ -17,6 +17,8 @@ function MainPage() {
 
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [imageGalleryModalIsOpen, setImageGalleryModalIsOpen] = useState(false);
+  const [imageGallery, setImageGallery] = useState([]);
 
   const handleFileChange = (files) => {
     setSelectedFile(files);
@@ -141,6 +143,24 @@ function MainPage() {
     setModalIsOpen(false);
   };
 
+  const openImageGalleryModal = (folder) => {
+    // Assuming we fetch images from the server based on the folder path
+    axios.get(`http://127.0.0.1:5000/folder-images?folder=${folder}`)
+      .then(response => {
+        setImageGallery(response.data);
+        setImageGalleryModalIsOpen(true);
+      })
+      .catch(error => {
+        console.error('Error fetching folder images:', error);
+        setError('Error fetching folder images.');
+      });
+  };
+
+  const closeImageGalleryModal = () => {
+    setImageGallery([]);
+    setImageGalleryModalIsOpen(false);
+  };
+
   useEffect(() => {
     fetchOutputHDF5Files();
     fetchOutputDICOMFiles();
@@ -241,7 +261,10 @@ function MainPage() {
                           </>
                         )}
                         {isDirectory && (
-                          <button onClick={() => downloadFolder(file)}>Download Folder</button>
+                          <>
+                            <button onClick={() => downloadFolder(file)}>Download Folder</button>
+                            <button onClick={() => openImageGalleryModal(file)}>View Folder Images</button>
+                          </>
                         )}
                       </li>
                     );
@@ -266,7 +289,10 @@ function MainPage() {
                           </>
                         )}
                         {isDirectory && (
-                          <button onClick={() => downloadFolder(file)}>Download Folder</button>
+                          <>
+                            <button onClick={() => downloadFolder(file)}>Download Folder</button>
+                            <button onClick={() => openImageGalleryModal(file)}>View Folder Images</button>
+                          </>
                         )}
                       </li>
                     );
@@ -291,6 +317,18 @@ function MainPage() {
             </div>
           )}
           <button onClick={closeModal} style={{ marginTop: '20px' }}>Close</button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={imageGalleryModalIsOpen} onRequestClose={closeImageGalleryModal} contentLabel="Image Gallery">
+        <div style={{ textAlign: 'center' }}>
+          <h2>Image Gallery</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {imageGallery.map((image, index) => (
+              <img key={index} src={image} alt={`Gallery ${index}`} style={{ width: '200px', margin: '10px' }} />
+            ))}
+          </div>
+          <button onClick={closeImageGalleryModal} style={{ marginTop: '20px' }}>Close</button>
         </div>
       </Modal>
     </React.Fragment>
