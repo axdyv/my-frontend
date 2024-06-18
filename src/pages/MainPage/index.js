@@ -3,6 +3,7 @@ import axios from 'axios';
 import CustomFileUpload from '../../components/CustomFIleUploadField';
 import Button from '@mui/material/Button';
 import { Paper, FormControl, InputLabel, Select, MenuItem, CircularProgress } from '@mui/material';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
 import Modal from 'react-modal';
 
 function MainPage() {
@@ -145,7 +146,7 @@ function MainPage() {
 
   const openImageGalleryModal = (folder) => {
     // Assuming we fetch images from the server based on the folder path
-    axios.get(`http://127.0.0.1:5000/folder-images?folder=${folder}`)
+    axios.get(`http://127.0.0.1:5000/output-files/folder-images?folder=${folder}`)
       .then(response => {
         setImageGallery(response.data);
         setImageGalleryModalIsOpen(true);
@@ -325,7 +326,7 @@ function MainPage() {
           <h2>Image Gallery</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
             {imageGallery.map((image, index) => (
-              <img key={index} src={image} alt={`Gallery ${index}`} style={{ width: '200px', margin: '10px' }} />
+              <LazyLoadImage key={index} src={image} alt={`Gallery ${index}`} style={{ width: '200px', margin: '10px' }} />
             ))}
           </div>
           <button onClick={closeImageGalleryModal} style={{ marginTop: '20px' }}>Close</button>
