@@ -130,9 +130,9 @@ def get_folder_images():
 @app.route('/output/<folder>/<image>', methods=['GET'])
 @cross_origin()
 def get_image_file(folder, image):
-    folder_path = os.path.join(folder, image)
+    folder_path = os.path.join('output', folder, image)
     print("folder: " + folder + " image: " + image)
-    return send_from_directory('output', folder_path)
+    return send_file(folder_path)
 
 # End of Upload/Output routes
 
