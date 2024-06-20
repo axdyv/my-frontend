@@ -146,7 +146,18 @@ function MainPage() {
 
   const openImageGalleryModal = (folder) => {
     // Assuming we fetch images from the server based on the folder path
-    axios.get(`http://127.0.0.1:5000/output-files/folder-images?folder=${folder}`)
+    if (fileType === 'HDF5') {
+      axios.get(`http://127.0.0.1:5000/output-files/folder-images?folder=${folder}`)
+        .then(response => {
+          setImageGallery(response.data);
+          setImageGalleryModalIsOpen(true);
+        })
+        .catch(error => {
+          console.error('Error fetching folder images:', error);
+          setError('Error fetching folder images.');
+        });
+    } else if (fileType === 'DICOM') {
+      axios.get(`http://127.0.0.1:5000//output-files/folder-images-metadata?folder=${folder}`)
       .then(response => {
         setImageGallery(response.data);
         setImageGalleryModalIsOpen(true);
@@ -155,6 +166,7 @@ function MainPage() {
         console.error('Error fetching folder images:', error);
         setError('Error fetching folder images.');
       });
+    }
   };
 
   const closeImageGalleryModal = () => {

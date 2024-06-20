@@ -28,6 +28,8 @@ def setup_folders():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+setup_folders()
+
 # Upload/output Routes
 @app.route('/output-files', methods=['GET'])
 @cross_origin()
@@ -102,40 +104,7 @@ def upload_file():
 @app.route('/output-files/folder-images', methods=['GET'])
 @cross_origin()
 def get_folder_images():
-    print("started get folder images")
-    folder_path = request.args.get('folder')
-    print(folder_path)
-    if not folder_path:
-        app.logger.error("Folder parameter is required")
-        return jsonify({'error': 'Folder parameter is required'}), 400
-
-    full_folder_path = os.path.join(OUTPUT_FOLDER, folder_path)
-    print(full_folder_path)
-    app.logger.debug(f"Looking for images in: {full_folder_path}")
-
-    if not os.path.isdir(full_folder_path):
-        app.logger.error(f"Folder not found: {full_folder_path}")
-        return jsonify({'error': 'Folder not found'}), 404
-
-    image_files = [file for file in os.listdir(full_folder_path) if file.endswith(('.jpg', '.jpeg', '.png'))]
-    # print(image_files)
-    image_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, file)}" for file in image_files]
-    # print(image_urls)
-
-    app.logger.debug(f"Image URLs: {image_urls}")
-    return jsonify(image_urls)
-
-@app.route('/output/<folder>/<image>', methods=['GET'])
-@cross_origin()
-def get_image_file(folder, image):
-    folder_path = os.path.join('output', folder, image)
-    print("folder: " + folder + " image: " + image)
-    return send_file(folder_path)
-
-@app.route('/output-files/folder-images', methods=['GET'])
-@cross_origin()
-def get_folder_images():
-    print("started get folder images")
+    # print("started get folder images")
     folder_path = request.args.get('folder')
     print(folder_path)
     if not folder_path:
@@ -169,6 +138,7 @@ def get_image_file(folder, image):
 @app.route('/output-files/folder-images-metadata', methods=['GET'])
 @cross_origin()
 def get_folder_images_metadata():
+    print("started get dicom folder images")
     folder_path = request.args.get('folder')
     if not folder_path:
         return jsonify({'error': 'Folder parameter is required'}), 400
@@ -196,6 +166,7 @@ def get_folder_images_metadata():
 @cross_origin()
 def get_DICOM_image_file(folder, subfolder, subfolder2, subfolder3, filename):
     folder_path = os.path.join(OUTPUT_FOLDER, folder, subfolder, subfolder2, subfolder3, 'image', filename)
+    print("Image file path: " + folder_path)
     if not os.path.exists(folder_path):
         return jsonify({'error': 'File not found'}), 404
     return send_file(folder_path)
