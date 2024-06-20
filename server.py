@@ -28,7 +28,6 @@ def setup_folders():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-setup_folders()
 
 # Upload/output Routes
 @app.route('/output-files', methods=['GET'])
@@ -146,26 +145,27 @@ def get_folder_images_metadata():
     full_folder_path = os.path.join(OUTPUT_FOLDER, folder_path)
 
     print("folder path: " + folder_path)
+    print("Full folder path: " + full_folder_path)
     if not os.path.isdir(full_folder_path):
         return jsonify({'error': 'Folder not found'}), 404
 
     image_files = [file for file in os.listdir(os.path.join(full_folder_path, 'image')) if file.endswith(('.jpg', '.jpeg', '.png'))]
     image_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, 'image', file)}" for file in image_files]
 
-    # metadata_files = [file for file in os.listdir(os.path.join(full_folder_path, 'meta')) if file.endswith('.json')]
-    # metadata_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, 'meta', file)}" for file in metadata_files]
+    metadata_files = [file for file in os.listdir(os.path.join(full_folder_path, 'meta')) if file.endswith('.json')]
+    metadata_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, 'meta', file)}" for file in metadata_files]
 
     data = {
         'images': image_urls,
-        # 'metadata': metadata_urls
+        'metadata': metadata_urls
     }
 
     return jsonify(data)
 
-@app.route('/output/<folder>/<subfolder>/<subfolder2>/<subfolder3>/<image>/<filename>', methods=['GET'])
+@app.route('/output/<folder>/<image>/<filename>', methods=['GET'])
 @cross_origin()
-def get_DICOM_image_file(folder, subfolder, subfolder2, subfolder3, filename):
-    folder_path = os.path.join(OUTPUT_FOLDER, folder, subfolder, subfolder2, subfolder3, 'image', filename)
+def get_DICOM_image_file(folder, filename):
+    folder_path = os.path.join(OUTPUT_FOLDER, folder, 'image', filename)
     print("Image file path: " + folder_path)
     if not os.path.exists(folder_path):
         return jsonify({'error': 'File not found'}), 404
@@ -231,7 +231,7 @@ def create_output_structure(input_folder, output_folder):
     for root, dirs, files in os.walk(input_folder):
         for dir_name in dirs:
             relative_path = os.path.relpath(os.path.join(root, dir_name), input_folder)
-            os.makedirs(os.path.join(output_folder, relative_path, 'image'), exist_ok=True)
+            # os.makedirs(os.path.join(output_folder, relative_path, 'image'), exist_ok=True)
             os.makedirs(os.path.join(output_folder, relative_path, 'meta'), exist_ok=True)
             os.makedirs(os.path.join(output_folder, relative_path, 'text'), exist_ok=True)
 
