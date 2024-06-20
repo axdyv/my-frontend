@@ -132,6 +132,39 @@ def get_image_file(folder, image):
     print("folder: " + folder + " image: " + image)
     return send_file(folder_path)
 
+@app.route('/output-files/folder-images', methods=['GET'])
+@cross_origin()
+def get_folder_images():
+    print("started get folder images")
+    folder_path = request.args.get('folder')
+    print(folder_path)
+    if not folder_path:
+        app.logger.error("Folder parameter is required")
+        return jsonify({'error': 'Folder parameter is required'}), 400
+
+    full_folder_path = os.path.join(OUTPUT_FOLDER, folder_path)
+    print(full_folder_path)
+    app.logger.debug(f"Looking for images in: {full_folder_path}")
+
+    if not os.path.isdir(full_folder_path):
+        app.logger.error(f"Folder not found: {full_folder_path}")
+        return jsonify({'error': 'Folder not found'}), 404
+
+    image_files = [file for file in os.listdir(full_folder_path) if file.endswith(('.jpg', '.jpeg', '.png'))]
+    # print(image_files)
+    image_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, file)}" for file in image_files]
+    # print(image_urls)
+
+    app.logger.debug(f"Image URLs: {image_urls}")
+    return jsonify(image_urls)
+
+@app.route('/output/<folder>/<image>', methods=['GET'])
+@cross_origin()
+def get_image_file(folder, image):
+    folder_path = os.path.join('output', folder, image)
+    print("folder: " + folder + " image: " + image)
+    return send_file(folder_path)
+
 ## For DICOM Visualization
 @app.route('/output-files/folder-images-metadata', methods=['GET'])
 @cross_origin()
