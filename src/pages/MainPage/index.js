@@ -70,7 +70,7 @@ function MainPage() {
       });
   };
 
-  const fetchOutputDICOMFiles = (path = '') => {
+  const fetchOutputDICOMFiles = (path = 'C:/Users/aniru/Desktop/HDF5_DICOM_viewer/Flask Backend/my-frontend/outputView') => {
     setLoading(true);
     axios.get(`http://127.0.0.1:5000/output-files?path=${path}`)
       .then(response => {

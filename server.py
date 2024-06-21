@@ -5,6 +5,7 @@ import json
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
+from distutils.dir_util import copy_tree
 import matplotlib.pyplot as plt
 import math
 import os
@@ -19,14 +20,19 @@ CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'output'
+isHDF5 = False
+isDicom = False
 
 def setup_folders():
     if os.path.exists(OUTPUT_FOLDER):
         shutil.rmtree(OUTPUT_FOLDER)
     if os.path.exists(UPLOAD_FOLDER):
         shutil.rmtree(UPLOAD_FOLDER)
+    if os.path.exists('outputView'):
+        shutil.rmtree('outputView')
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+    os.makedirs('outputView', exist_ok=True)
 
 
 # Upload/output Routes
@@ -103,6 +109,10 @@ def upload_file():
 @app.route('/output-files/folder-images', methods=['GET'])
 @cross_origin()
 def get_folder_images():
+    print()
+    VISUALIZATION_FOLDER = 'output'
+    if (zipfile.is_zipfile(os.path.join('uploads', os.listdir('uploads')[0]))):
+        VISUALIZATION_FOLDER = 'outputView'
     # print("started get folder images")
     folder_path = request.args.get('folder')
     print(folder_path)
@@ -110,7 +120,7 @@ def get_folder_images():
         app.logger.error("Folder parameter is required")
         return jsonify({'error': 'Folder parameter is required'}), 400
 
-    full_folder_path = os.path.join(OUTPUT_FOLDER, folder_path)
+    full_folder_path = os.path.join(VISUALIZATION_FOLDER, folder_path)
     print(full_folder_path)
     app.logger.debug(f"Looking for images in: {full_folder_path}")
 
@@ -129,47 +139,51 @@ def get_folder_images():
 @app.route('/output/<folder>/<image>', methods=['GET'])
 @cross_origin()
 def get_image_file(folder, image):
-    folder_path = os.path.join('output', folder, image)
+    print(zipfile.is_zipfile(os.path.join('uploads', os.listdir('uploads')[0])))
+    VISUALIZATION_FOLDER = 'output'
+    if (isDicom):
+        VISUALIZATION_FOLDER = 'outputView'
+    folder_path = os.path.join(VISUALIZATION_FOLDER, folder, image)
     print("folder: " + folder + " image: " + image)
     return send_file(folder_path)
 
 ## For DICOM Visualization
-@app.route('/output-files/folder-images-metadata', methods=['GET'])
-@cross_origin()
-def get_folder_images_metadata():
-    print("started get dicom folder images")
-    folder_path = request.args.get('folder')
-    if not folder_path:
-        return jsonify({'error': 'Folder parameter is required'}), 400
+# @app.route('/output-files/folder-images-metadata', methods=['GET'])
+# @cross_origin()
+# def get_folder_images_metadata():
+#     print("started get dicom folder images")
+#     folder_path = request.args.get('folder')
+#     if not folder_path:
+#         return jsonify({'error': 'Folder parameter is required'}), 400
 
-    full_folder_path = os.path.join(OUTPUT_FOLDER, folder_path)
+#     full_folder_path = os.path.join(OUTPUT_FOLDER, folder_path)
 
-    print("folder path: " + folder_path)
-    print("Full folder path: " + full_folder_path)
-    if not os.path.isdir(full_folder_path):
-        return jsonify({'error': 'Folder not found'}), 404
+#     print("folder path: " + folder_path)
+#     print("Full folder path: " + full_folder_path)
+#     if not os.path.isdir(full_folder_path):
+#         return jsonify({'error': 'Folder not found'}), 404
 
-    image_files = [file for file in os.listdir(os.path.join(full_folder_path, 'image')) if file.endswith(('.jpg', '.jpeg', '.png'))]
-    image_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, 'image', file)}" for file in image_files]
+#     image_files = [file for file in os.listdir(os.path.join(full_folder_path, 'image')) if file.endswith(('.jpg', '.jpeg', '.png'))]
+#     image_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, 'image', file)}" for file in image_files]
 
-    metadata_files = [file for file in os.listdir(os.path.join(full_folder_path, 'meta')) if file.endswith('.json')]
-    metadata_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, 'meta', file)}" for file in metadata_files]
+#     metadata_files = [file for file in os.listdir(os.path.join(full_folder_path, 'meta')) if file.endswith('.json')]
+#     metadata_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, 'meta', file)}" for file in metadata_files]
 
-    data = {
-        'images': image_urls,
-        'metadata': metadata_urls
-    }
+#     data = {
+#         'images': image_urls,
+#         'metadata': metadata_urls
+#     }
 
-    return jsonify(data)
+#     return jsonify(data)
 
-@app.route('/output/<folder>/<image>/<filename>', methods=['GET'])
-@cross_origin()
-def get_DICOM_image_file(folder, filename):
-    folder_path = os.path.join(OUTPUT_FOLDER, folder, 'image', filename)
-    print("Image file path: " + folder_path)
-    if not os.path.exists(folder_path):
-        return jsonify({'error': 'File not found'}), 404
-    return send_file(folder_path)
+# @app.route('/output/<folder>/<image>/<filename>', methods=['GET'])
+# @cross_origin()
+# def get_DICOM_image_file(folder, filename):
+#     folder_path = os.path.join(OUTPUT_FOLDER, folder, 'image', filename)
+#     print("Image file path: " + folder_path)
+#     if not os.path.exists(folder_path):
+#         return jsonify({'error': 'File not found'}), 404
+#     return send_file(folder_path)
 
 
 # End of Upload/Output routes
@@ -231,7 +245,7 @@ def create_output_structure(input_folder, output_folder):
     for root, dirs, files in os.walk(input_folder):
         for dir_name in dirs:
             relative_path = os.path.relpath(os.path.join(root, dir_name), input_folder)
-            # os.makedirs(os.path.join(output_folder, relative_path, 'image'), exist_ok=True)
+            os.makedirs(os.path.join(output_folder, relative_path, 'image'), exist_ok=True)
             os.makedirs(os.path.join(output_folder, relative_path, 'meta'), exist_ok=True)
             os.makedirs(os.path.join(output_folder, relative_path, 'text'), exist_ok=True)
 
@@ -306,21 +320,24 @@ def delete_empty_folders():
     return deleted
 
 def output_for_visualization():
-    os.mkdir("outputView")
     i = 0
-    for dirpath, dirnames in os.walk('output'):
+    for dirpath, dirnames, files in os.walk('output'):
         for dir in dirnames:
             if (dir == 'image'):
-                shutil.copytree(os.path.join(dirpath, dir + i), 'outputView')
+                print(os.path.join(dirpath, dir))
+                shutil.copytree(os.path.join(dirpath, dir), os.path.join('outputView', 'imageNew' + str(i)))
             if (dir == 'meta'):
-                shutil.copytree(os.path.join(dirpath, dir + i), 'outputView')
+                print(os.path.join(dirpath, dir))
+                shutil.copytree(os.path.join(dirpath, dir), os.path.join('outputView', 'metaNew' + str(i)))
             if (dir == 'text'):
-                shutil.copytree(os.path.join(dirpath, dir + i), 'outputView')
-        i += 1
-            
-
+                print(os.path.join(dirpath, dir))
+                shutil.copytree(os.path.join(dirpath, dir), os.path.join('outputView','textNew' + str(i)))
+                i += 1
+    return 0
 
 def mainDICOMMethod(input_folder, output_folder):
+    isDicom = True
+    os.mkdir('outputView')
     create_output_structure(input_folder, output_folder)
     process_files(input_folder, output_folder)
     delete_empty_folders()
@@ -328,6 +345,7 @@ def mainDICOMMethod(input_folder, output_folder):
 
 # HDF5 Parser
 def mainHDF5Method(file_path):
+    isHDF5 = True
     path_to_dataset = {}
     with h5py.File(file_path, 'r') as file:
         file.visititems(lambda name, obj: traverse_hdf5(name, obj, path_to_dataset))
