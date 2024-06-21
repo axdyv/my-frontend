@@ -324,7 +324,7 @@ def mainDICOMMethod(input_folder, output_folder):
     create_output_structure(input_folder, output_folder)
     process_files(input_folder, output_folder)
     delete_empty_folders()
-    output_for_visualization
+    output_for_visualization()
 
 # HDF5 Parser
 def mainHDF5Method(file_path):
