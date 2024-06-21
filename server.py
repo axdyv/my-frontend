@@ -291,9 +291,40 @@ def process_files(input_folder, output_folder):
                 with open(text_output_path, 'a') as text_file:
                     text_file.write(f'{{"{image_name}": "{os.path.basename(meta_output_path)}"}}\n')
 
+def delete_empty_folders(): 
+    root = 'output'
+    deleted = set()
+    for current_dir, subdirs, files in os.walk(root, topdown=False):
+
+        still_has_subdirs = False
+        for subdir in subdirs:
+            if os.path.join(current_dir, subdir) not in deleted:
+                still_has_subdirs = True
+                break
+        if not any(files) and not still_has_subdirs:
+            os.rmdir(current_dir)
+    return deleted
+
+def output_for_visualization():
+    os.mkdir("outputView")
+    i = 0
+    for dirpath, dirnames in os.walk('output'):
+        for dir in dirnames:
+            if (dir == 'image'):
+                shutil.copytree(os.path.join(dirpath, dir + i), 'outputView')
+            if (dir == 'meta'):
+                shutil.copytree(os.path.join(dirpath, dir + i), 'outputView')
+            if (dir == 'text'):
+                shutil.copytree(os.path.join(dirpath, dir + i), 'outputView')
+        i += 1
+            
+
+
 def mainDICOMMethod(input_folder, output_folder):
     create_output_structure(input_folder, output_folder)
     process_files(input_folder, output_folder)
+    delete_empty_folders()
+    output_for_visualization
 
 # HDF5 Parser
 def mainHDF5Method(file_path):
