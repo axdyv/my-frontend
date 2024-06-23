@@ -40,14 +40,20 @@ def setup_folders():
 @cross_origin()
 def list_output_files():
     path = request.args.get('path', '')
-    directory = os.path.join(OUTPUT_FOLDER, path)
+    VISUALIZATION_FOLDER = 'output'
+    uploads_folder = 'uploads'
+    if os.path.isdir(uploads_folder) and os.listdir(uploads_folder):
+        first_file = os.path.join(uploads_folder, os.listdir(uploads_folder)[0])
+        if os.path.isfile(first_file) and zipfile.is_zipfile(first_file):
+            VISUALIZATION_FOLDER = 'outputView'
+    directory = os.path.join(VISUALIZATION_FOLDER, path)
     if not os.path.exists(directory):
         return jsonify({'error': 'Directory not found'}), 404
 
     files = os.listdir(directory)
     return jsonify(files)
 
-@app.route('/output-files/<filename>', methods=['GET'])
+@app.route('/output-files/<path:folder>/<path:filename>', methods=['GET'])
 @cross_origin()
 def get_output_file(folder, filename):
     VISUALIZATION_FOLDER = 'output'
