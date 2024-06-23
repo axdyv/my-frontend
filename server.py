@@ -49,7 +49,15 @@ def list_output_files():
 
 @app.route('/output-files/<filename>', methods=['GET'])
 @cross_origin()
-def get_output_file(filename):
+def get_output_file(folder, filename):
+    VISUALIZATION_FOLDER = 'output'
+    uploads_folder = 'uploads'
+    if os.path.isdir(uploads_folder) and os.listdir(uploads_folder):
+        first_file = os.path.join(uploads_folder, os.listdir(uploads_folder)[0])
+        if os.path.isfile(first_file) and zipfile.is_zipfile(first_file):
+            VISUALIZATION_FOLDER = 'outputView'
+            folder_path = os.path.join(VISUALIZATION_FOLDER, folder, filename)
+            return send_file(folder_path)
     return send_from_directory(OUTPUT_FOLDER, filename)
 
 @app.route('/output-files/download-folder', methods=['GET'])
@@ -109,19 +117,20 @@ def upload_file():
 @app.route('/output-files/folder-images', methods=['GET'])
 @cross_origin()
 def get_folder_images():
-    print()
     VISUALIZATION_FOLDER = 'output'
-    if (zipfile.is_zipfile(os.path.join('uploads', os.listdir('uploads')[0]))):
-        VISUALIZATION_FOLDER = 'outputView'
-    # print("started get folder images")
+    uploads_folder = 'uploads'
+
+    if os.path.isdir(uploads_folder) and os.listdir(uploads_folder):
+        first_file = os.path.join(uploads_folder, os.listdir(uploads_folder)[0])
+        if os.path.isfile(first_file) and zipfile.is_zipfile(first_file):
+            VISUALIZATION_FOLDER = 'outputView'
+
     folder_path = request.args.get('folder')
-    print(folder_path)
     if not folder_path:
         app.logger.error("Folder parameter is required")
         return jsonify({'error': 'Folder parameter is required'}), 400
 
     full_folder_path = os.path.join(VISUALIZATION_FOLDER, folder_path)
-    print(full_folder_path)
     app.logger.debug(f"Looking for images in: {full_folder_path}")
 
     if not os.path.isdir(full_folder_path):
@@ -129,22 +138,29 @@ def get_folder_images():
         return jsonify({'error': 'Folder not found'}), 404
 
     image_files = [file for file in os.listdir(full_folder_path) if file.endswith(('.jpg', '.jpeg', '.png'))]
-    # print(image_files)
-    image_urls = [f"http://127.0.0.1:5000/{os.path.join(full_folder_path, file)}" for file in image_files]
-    # print(image_urls)
-
+    image_urls = [f"http://127.0.0.1:5000/output/{folder_path}/{file}" for file in image_files]
     app.logger.debug(f"Image URLs: {image_urls}")
+
     return jsonify(image_urls)
 
-@app.route('/output/<folder>/<image>', methods=['GET'])
+@app.route('/output/<path:folder>/<path:image>', methods=['GET'])
 @cross_origin()
 def get_image_file(folder, image):
-    print(zipfile.is_zipfile(os.path.join('uploads', os.listdir('uploads')[0])))
     VISUALIZATION_FOLDER = 'output'
-    if (isDicom):
-        VISUALIZATION_FOLDER = 'outputView'
+    uploads_folder = 'uploads'
+
+    if os.path.isdir(uploads_folder) and os.listdir(uploads_folder):
+        first_file = os.path.join(uploads_folder, os.listdir(uploads_folder)[0])
+        if os.path.isfile(first_file) and zipfile.is_zipfile(first_file):
+            VISUALIZATION_FOLDER = 'outputView'
+
     folder_path = os.path.join(VISUALIZATION_FOLDER, folder, image)
-    print("folder: " + folder + " image: " + image)
+    app.logger.debug(f"Serving image from path: {folder_path}")
+
+    if not os.path.isfile(folder_path):
+        app.logger.error(f"Image file not found: {folder_path}")
+        return jsonify({'error': 'Image file not found'}), 404
+
     return send_file(folder_path)
 
 ## For DICOM Visualization
@@ -337,7 +353,11 @@ def output_for_visualization():
 
 def mainDICOMMethod(input_folder, output_folder):
     isDicom = True
-    os.mkdir('outputView')
+    isExist = os.path.exists('outputView')
+    if(isExist):
+        print("outputView exists")
+    else:
+        os.mkdir('outputView')
     create_output_structure(input_folder, output_folder)
     process_files(input_folder, output_folder)
     delete_empty_folders()
