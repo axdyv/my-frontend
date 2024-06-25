@@ -20,6 +20,9 @@ function MainPage() {
   const [previewFile, setPreviewFile] = useState(null);
   const [imageGalleryModalIsOpen, setImageGalleryModalIsOpen] = useState(false);
   const [imageGallery, setImageGallery] = useState([]);
+  const [metadataTextFiles, setMetadataTextFiles] = useState({});
+  const [currentFolder, setCurrentFolder] = useState('');
+  const [metadataTextModalIsOpen, setMetadataTextModalIsOpen] = useState(false);
 
   const handleFileChange = (files) => {
     setSelectedFile(files);
@@ -145,7 +148,6 @@ function MainPage() {
   };
 
   const openImageGalleryModal = (folder) => {
-    // Assuming we fetch images from the server based on the folder path
     axios.get(`http://127.0.0.1:5000/output-files/folder-images?folder=${folder}`)
       .then(response => {
         setImageGallery(response.data);
@@ -162,27 +164,46 @@ function MainPage() {
     setImageGalleryModalIsOpen(false);
   };
 
-  useEffect(() => {
-    fetchOutputHDF5Files();
-    fetchOutputDICOMFiles();
-  }, []);
-
-  const handleHDF5DirectoryClick = (dir) => {
-    fetchOutputHDF5Files(`${currentHDF5Path}/${dir}`);
+  const fetchMetadataAndTextFiles = (folder) => {
+    setLoading(true);
+    axios.get(`http://127.0.0.1:5000/output-files/folder-metadata-text?folder=${folder}`)
+      .then(response => {
+        setMetadataTextFiles(response.data);
+        setCurrentFolder(folder);
+        setError(null);
+        setMetadataTextModalIsOpen(true);
+      })
+      .catch(error => {
+        console.error('Error fetching metadata and text files:', error);
+        setError('Error fetching metadata and text files.');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
-  const handleDICOMDirectoryClick = (dir) => {
-    fetchOutputDICOMFiles(`${currentDICOMPath}/${dir}`);
+  const handleHDF5DirectoryClick = (folder) => {
+    const newPath = `${currentHDF5Path}/${folder}`;
+    fetchOutputHDF5Files(newPath);
+  };
+
+  const handleDICOMDirectoryClick = (folder) => {
+    const newPath = `${currentDICOMPath}/${folder}`;
+    fetchOutputDICOMFiles(newPath);
   };
 
   const handleHDF5BackClick = () => {
-    const parentPath = currentHDF5Path.split('/').slice(0, -1).join('/');
-    fetchOutputHDF5Files(parentPath);
+    const pathSegments = currentHDF5Path.split('/').filter(segment => segment);
+    pathSegments.pop();
+    const newPath = pathSegments.join('/');
+    fetchOutputHDF5Files(newPath);
   };
 
   const handleDICOMBackClick = () => {
-    const parentPath = currentDICOMPath.split('/').slice(0, -1).join('/');
-    fetchOutputDICOMFiles(parentPath);
+    const pathSegments = currentDICOMPath.split('/').filter(segment => segment);
+    pathSegments.pop();
+    const newPath = pathSegments.join('/');
+    fetchOutputDICOMFiles(newPath);
   };
 
   const renderHDF5Breadcrumbs = () => {
@@ -213,17 +234,39 @@ function MainPage() {
     );
   };
 
+  const renderMetadataTextModalContent = () => {
+    const { metadata = {}, text = {} } = metadataTextFiles;
+
+    return (
+      <div>
+        <h3>Metadata Files</h3>
+        {Object.entries(metadata).map(([filename, content], index) => (
+          <div key={index} className="metadata-file">
+            <h4>{filename}</h4>
+            <pre>{JSON.stringify(content, null, 2)}</pre>
+          </div>
+        ))}
+        <h3>Text Files</h3>
+        {Object.entries(text).map(([filename, content], index) => (
+          <div key={index} className="text-file">
+            <h4>{filename}</h4>
+            <pre>{content}</pre>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <React.Fragment>
       {loading && <CircularProgress />}
       {error && <p className="error">{error}</p>}
 
-      <div style={{display: 'flex', justifyContent: 'space-between', width: '100%'}}>
-
-        <Paper elevation={3} style={{width: '100%', margin: '0px 12px', padding: '12px'}}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        <Paper elevation={3} style={{ width: '100%', margin: '0px 12px', padding: '12px' }}>
           <div>
             <h2>Upload File</h2>
-            <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'}/>
+            <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'} />
             <FormControl fullWidth margin="normal">
               <InputLabel id="file-type-label">File Type</InputLabel>
               <Select
@@ -235,7 +278,7 @@ function MainPage() {
                 <MenuItem value="DICOM">DICOM</MenuItem>
               </Select>
             </FormControl>
-            <Button onClick={handleUpload} variant="contained" style={{width: '100%'}} disabled={!fileType}>
+            <Button onClick={handleUpload} variant="contained" style={{ width: '100%' }} disabled={!fileType}>
               Upload File
             </Button>
           </div>
@@ -264,7 +307,7 @@ function MainPage() {
                         {isDirectory && (
                           <>
                             <button onClick={() => downloadFolder(file)}>Download Folder</button>
-                            <button onClick={() => openImageGalleryModal(file)}>View Folder Images</button>
+                            <button onClick={() => openImageGalleryModal(file)}>View Folder</button>
                           </>
                         )}
                       </li>
@@ -292,7 +335,8 @@ function MainPage() {
                         {isDirectory && (
                           <>
                             <button onClick={() => downloadFolder(file)}>Download Folder</button>
-                            <button onClick={() => openImageGalleryModal(file)}>View Folder Images</button>
+                            <button onClick={() => openImageGalleryModal(file)}>View Folder</button>
+                            <button onClick={() => fetchMetadataAndTextFiles(file)}>View Metadata and Text Files</button>
                           </>
                         )}
                       </li>
@@ -301,9 +345,9 @@ function MainPage() {
                 </ul>
               )
             )}
+            {fileType === 'DICOM' && currentFolder && renderMetadataTextModalContent()}
           </div>
         </Paper>
-
       </div>
 
       <Modal isOpen={modalIsOpen} onRequestClose={closeModal} contentLabel="File Preview">
@@ -330,6 +374,14 @@ function MainPage() {
             ))}
           </div>
           <button onClick={closeImageGalleryModal} style={{ marginTop: '20px' }}>Close</button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={metadataTextModalIsOpen} onRequestClose={() => setMetadataTextModalIsOpen(false)} contentLabel="Metadata and Text Files">
+        <div style={{ textAlign: 'center' }}>
+          <h2>Metadata and Text Files</h2>
+          {renderMetadataTextModalContent()}
+          <button onClick={() => setMetadataTextModalIsOpen(false)} style={{ marginTop: '20px' }}>Close</button>
         </div>
       </Modal>
     </React.Fragment>

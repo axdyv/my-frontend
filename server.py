@@ -20,6 +20,7 @@ CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'output'
+METADATA_FOLDER = 'metadata'
 isHDF5 = False
 isDicom = False
 
@@ -53,18 +54,19 @@ def list_output_files():
     files = os.listdir(directory)
     return jsonify(files)
 
-@app.route('/output-files/<path:folder>/<path:filename>', methods=['GET'])
+@app.route('/output-files/filename', methods=['GET'])
 @cross_origin()
 def get_output_file(folder, filename):
     VISUALIZATION_FOLDER = 'output'
     uploads_folder = 'uploads'
     if os.path.isdir(uploads_folder) and os.listdir(uploads_folder):
         first_file = os.path.join(uploads_folder, os.listdir(uploads_folder)[0])
+        folder_path = os.path.join(VISUALIZATION_FOLDER, filename)
         if os.path.isfile(first_file) and zipfile.is_zipfile(first_file):
             VISUALIZATION_FOLDER = 'outputView'
             folder_path = os.path.join(VISUALIZATION_FOLDER, folder, filename)
             return send_file(folder_path)
-    return send_from_directory(OUTPUT_FOLDER, filename)
+    return send_file(folder_path)
 
 @app.route('/output-files/download-folder', methods=['GET'])
 @cross_origin()
@@ -168,6 +170,62 @@ def get_image_file(folder, image):
         return jsonify({'error': 'Image file not found'}), 404
 
     return send_file(folder_path)
+
+# New route to view folder contents as JSONs
+@app.route('/output-files/folder-metadata-text', methods=['GET'])
+@cross_origin()
+def get_folder_metadata_text():
+    VISUALIZATION_FOLDER = 'output'
+    uploads_folder = 'uploads'
+    
+    # Check if the upload folder contains a zip file
+    if os.path.isdir(uploads_folder) and os.listdir(uploads_folder):
+        first_file = os.path.join(uploads_folder, os.listdir(uploads_folder)[0])
+        if os.path.isfile(first_file) and zipfile.is_zipfile(first_file):
+            VISUALIZATION_FOLDER = 'outputView'
+    
+    # Get the folder path from the request
+    folder_path = request.args.get('folder')
+    if not folder_path:
+        app.logger.error("Folder parameter is required")
+        return jsonify({'error': 'Folder parameter is required'}), 400
+
+    # Construct the full path to the folder
+    full_folder_path = os.path.join(VISUALIZATION_FOLDER, folder_path)
+    app.logger.debug(f"Looking for metadata and text files in: {full_folder_path}")
+
+    # Check if the folder exists
+    if not os.path.isdir(full_folder_path):
+        app.logger.error(f"Folder not found: {full_folder_path}")
+        return jsonify({'error': 'Folder not found'}), 404
+
+    # Find metadata and text files
+    metadata_files = [file for file in os.listdir(full_folder_path) if file.endswith('.json')]
+    text_files = [file for file in os.listdir(full_folder_path) if file.endswith('.txt')]
+
+    # Read the contents of the metadata files
+    metadata_contents = {}
+    for metadata_file in metadata_files:
+        file_path = os.path.join(full_folder_path, metadata_file)
+        with open(file_path, 'r') as file:
+            try:
+                metadata_contents[metadata_file] = json.load(file)
+            except json.JSONDecodeError as e:
+                app.logger.error(f"Error decoding JSON from file {file_path}: {e}")
+                metadata_contents[metadata_file] = {"error": "Invalid JSON file"}
+
+    # Read the contents of the text files
+    text_contents = {}
+    for text_file in text_files:
+        file_path = os.path.join(full_folder_path, text_file)
+        with open(file_path, 'r') as file:
+            text_contents[text_file] = file.read()
+
+    # Return the combined contents as a JSON response
+    return jsonify({
+        'metadata': metadata_contents,
+        'text': text_contents
+    })
 
 ## For DICOM Visualization
 # @app.route('/output-files/folder-images-metadata', methods=['GET'])
