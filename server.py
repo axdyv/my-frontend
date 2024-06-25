@@ -54,9 +54,9 @@ def list_output_files():
     files = os.listdir(directory)
     return jsonify(files)
 
-@app.route('/output-files/filename', methods=['GET'])
+@app.route('/output-files/<path:filename>', methods=['GET'])
 @cross_origin()
-def get_output_file(folder, filename):
+def get_output_file(filename):
     VISUALIZATION_FOLDER = 'output'
     uploads_folder = 'uploads'
     if os.path.isdir(uploads_folder) and os.listdir(uploads_folder):
@@ -66,6 +66,7 @@ def get_output_file(folder, filename):
             VISUALIZATION_FOLDER = 'outputView'
             folder_path = os.path.join(VISUALIZATION_FOLDER, folder, filename)
             return send_file(folder_path)
+    print("output file path: " + folder_path)
     return send_file(folder_path)
 
 @app.route('/output-files/download-folder', methods=['GET'])

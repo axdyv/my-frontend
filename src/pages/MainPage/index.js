@@ -336,7 +336,7 @@ function MainPage() {
                           <>
                             <button onClick={() => downloadFolder(file)}>Download Folder</button>
                             <button onClick={() => openImageGalleryModal(file)}>View Folder</button>
-                            <button onClick={() => fetchMetadataAndTextFiles(file)}>View Metadata and Text Files</button>
+                            <button onClick={() => fetchMetadataAndTextFiles(file)}>View Files</button>
                           </>
                         )}
                       </li>
@@ -345,7 +345,6 @@ function MainPage() {
                 </ul>
               )
             )}
-            {fileType === 'DICOM' && currentFolder && renderMetadataTextModalContent()}
           </div>
         </Paper>
       </div>
