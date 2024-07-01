@@ -10,6 +10,8 @@ import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import FolderIcon from '@mui/icons-material/Folder';
+import Dialog from '@mui/material/Dialog';
 
 function MainPage() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -20,6 +22,7 @@ function MainPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fileType, setFileType] = useState('');
+  const [uploadingFileLoading, setUploadingFileLoading] = useState(false)
 
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
@@ -39,7 +42,7 @@ function MainPage() {
       const formData = new FormData();
       formData.append('file', selectedFile[0]);
 
-      setLoading(true);
+      setUploadingFileLoading(true);
       axios.post(`http://127.0.0.1:5000/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -54,7 +57,7 @@ function MainPage() {
         setError(`Error uploading ${fileType} file.`);
       })
       .finally(() => {
-        setLoading(false);
+        setUploadingFileLoading(false);
       });
     } else {
       setError('No file selected');
@@ -267,8 +270,6 @@ function MainPage() {
 
   return (
     <React.Fragment>
-      {error && <p className="error">{error}</p>}
-
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
         <Paper elevation={3} style={{ width: '100%', margin: '0px 12px', padding: '12px' }}>
           <div>
@@ -287,21 +288,21 @@ function MainPage() {
                 <MenuItem value="DICOM">DICOM</MenuItem>
               </Select>
             </FormControl>
-            <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'} disabled={loading || !fileType} />
+            <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'} disabled={uploadingFileLoading || !fileType} />
             <Button onClick={handleUpload} variant="contained" style={{ width: '100%' }} disabled={!fileType || loading}>
-              {loading && <CircularProgress size={25}  style={{marginRight: '16px'}}/>} {loading ? 'Uploading File' : 'Upload File'}
+              {uploadingFileLoading && <CircularProgress size={25}  style={{marginRight: '16px'}}/>} {uploadingFileLoading ? 'Uploading File' : 'Upload File'}
             </Button>
           </div>
           <div className="output-section">
             <h2>Output {fileType === 'HDF5' ? 'HDF5' : 'DICOM'} Files</h2>
+            {error && <p className="error">{error}</p>}
             {fileType === 'HDF5' ? renderHDF5Breadcrumbs() : renderDICOMBreadcrumbs()}
             {fileType === 'HDF5' && currentHDF5Path && <button onClick={handleHDF5BackClick}>Back</button>}
             {fileType === 'DICOM' && currentDICOMPath && <button onClick={handleDICOMBackClick}>Back</button>}
-            {fileType === 'HDF5' ? (
+            {fileType === 'HDF5' && (
               outputHDF5Files.length === 0 ? (
                 <p>No HDF5 files available.</p>
               ) : (
-                <>
                  <table>
                     {outputHDF5Files.map((file, index) => {
                       const isDirectory = !file.includes('.');
@@ -346,43 +347,57 @@ function MainPage() {
                       )
                     })}
                  </table>
-                </>
                 )
-            ) : (
+            )} 
+            {fileType === 'DICOM' && (
               outputDICOMFiles.length === 0 ? (
                 <p>No DICOM files available.</p>
               ) : (
-                <ul>
+                <table>
                   {outputDICOMFiles.map((file, index) => {
+                    console.log('file ==>', file)
                     const isDirectory = !file.includes('.');
+                    console.log('is directory====>', isDirectory)
                     return (
-                      <li key={index}>
-                        {isDirectory ? (
-                          <span onClick={() => handleDICOMDirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
-                        ) : (
-                          <>
-                            <span onClick={() => openModal(`http://127.0.0.1:5000/output-files/${file}`)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
-                            <button onClick={() => downloadFile(file)}>Download</button>
-                          </>
-                        )}
+                      <tr key={index}>
                         {isDirectory && (
                           <>
-                            <button onClick={() => downloadFolder(file)}>Download Folder</button>
-                            <button onClick={() => openImageGalleryModal(file)}>View Folder</button>
-                            <button onClick={() => fetchMetadataAndTextFiles(file)}>View Files</button>
-                          </>
+                            <td>
+                            <span>{file}</span>  
+                            </td>
+                            <td>
+                              {<Tooltip title="Download Folder">
+                                  <IconButton>
+                                    <CloudDownloadIcon onClick={() => downloadFolder(file)} />  
+                                  </IconButton>
+                                </Tooltip>
+                              }
+                              {<Tooltip title="View Files">
+                                  <IconButton>
+                                    <VisibilityIcon onClick={() => fetchMetadataAndTextFiles(file)}/>  
+                                  </IconButton>
+                                </Tooltip>
+                              }
+                              {<Tooltip title="View Folder">
+                                  <IconButton>
+                                    <FolderIcon onClick={() => openImageGalleryModal(file)}/>  
+                                  </IconButton>
+                                </Tooltip>
+                              }
+                            </td>
+                          </> 
                         )}
-                      </li>
+                      </tr>
                     );
                   })}
-                </ul>
+                </table>
               )
             )}
           </div>
         </Paper>
       </div>
 
-      <Modal isOpen={modalIsOpen} onRequestClose={closeModal} contentLabel="File Preview">
+      <Dialog open={modalIsOpen} onClose={closeModal}>
         <div style={{ textAlign: 'center' }}>
           {previewFile && (
             <div>
@@ -393,11 +408,11 @@ function MainPage() {
               )}
             </div>
           )}
-          <button onClick={closeModal} style={{ marginTop: '20px' }}>Close</button>
+          <Button variant='contained' onClick={closeModal} style={{ marginTop: '20px' }}>Close</Button>
         </div>
-      </Modal>
+      </Dialog>
 
-      <Modal isOpen={imageGalleryModalIsOpen} onRequestClose={closeImageGalleryModal} contentLabel="Image Gallery">
+      <Dialog open={imageGalleryModalIsOpen} onClose={closeImageGalleryModal} fullWidth >
         <div style={{ textAlign: 'center' }}>
           <h2>Image Gallery</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -405,17 +420,17 @@ function MainPage() {
               <LazyLoadImage key={index} src={image} alt={`Gallery ${index}`} style={{ width: '200px', margin: '10px' }} />
             ))}
           </div>
-          <button onClick={closeImageGalleryModal} style={{ marginTop: '20px' }}>Close</button>
+          <Button variant='contained' onClick={closeImageGalleryModal} style={{ marginTop: '20px' }}>Close</Button>
         </div>
-      </Modal>
+      </Dialog>
 
-      <Modal isOpen={metadataTextModalIsOpen} onRequestClose={() => setMetadataTextModalIsOpen(false)} contentLabel="Metadata and Text Files">
+      <Dialog open={metadataTextModalIsOpen} onClose={() => setMetadataTextModalIsOpen(false)} style={{padding: '20px'}}>
         <div style={{ textAlign: 'center' }}>
           <h2>Metadata and Text Files</h2>
           {renderMetadataTextModalContent()}
-          <button onClick={() => setMetadataTextModalIsOpen(false)} style={{ marginTop: '20px' }}>Close</button>
+          <Button variant='contained' onClick={() => setMetadataTextModalIsOpen(false)} style={{ marginTop: '20px' }}>Close</Button>
         </div>
-      </Modal>
+      </Dialog>
     </React.Fragment>
   );
 }
