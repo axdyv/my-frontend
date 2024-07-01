@@ -5,7 +5,6 @@ import json
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
-from distutils.dir_util import copy_tree
 import matplotlib.pyplot as plt
 import math
 import os
