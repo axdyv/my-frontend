@@ -5,6 +5,11 @@ import Button from '@mui/material/Button';
 import { Paper, FormControl, InputLabel, Select, MenuItem, CircularProgress } from '@mui/material';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import Modal from 'react-modal';
+import './style.css'
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import Tooltip from '@mui/material/Tooltip';
+import IconButton from '@mui/material/IconButton';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 function MainPage() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -23,6 +28,7 @@ function MainPage() {
   const [metadataTextFiles, setMetadataTextFiles] = useState({});
   const [currentFolder, setCurrentFolder] = useState('');
   const [metadataTextModalIsOpen, setMetadataTextModalIsOpen] = useState(false);
+  
 
   const handleFileChange = (files) => {
     setSelectedFile(files);
@@ -233,6 +239,8 @@ function MainPage() {
       </div>
     );
   };
+  
+  console.log('preview file ===>', previewFile)
 
   const renderMetadataTextModalContent = () => {
     const { metadata = {}, text = {} } = metadataTextFiles;
@@ -259,27 +267,29 @@ function MainPage() {
 
   return (
     <React.Fragment>
-      {loading && <CircularProgress />}
       {error && <p className="error">{error}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
         <Paper elevation={3} style={{ width: '100%', margin: '0px 12px', padding: '12px' }}>
           <div>
-            <h2>Upload File</h2>
-            <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'} />
+            <h2 style={{marginBottom: 0}}>Upload File</h2>
+            
+            
             <FormControl fullWidth margin="normal">
               <InputLabel id="file-type-label">File Type</InputLabel>
               <Select
                 labelId="file-type-label"
                 value={fileType}
+                label="File Type"
                 onChange={(e) => setFileType(e.target.value)}
               >
                 <MenuItem value="HDF5">HDF5</MenuItem>
                 <MenuItem value="DICOM">DICOM</MenuItem>
               </Select>
             </FormControl>
-            <Button onClick={handleUpload} variant="contained" style={{ width: '100%' }} disabled={!fileType}>
-              Upload File
+            <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'} disabled={loading || !fileType} />
+            <Button onClick={handleUpload} variant="contained" style={{ width: '100%' }} disabled={!fileType || loading}>
+              {loading && <CircularProgress size={25}  style={{marginRight: '16px'}}/>} {loading ? 'Uploading File' : 'Upload File'}
             </Button>
           </div>
           <div className="output-section">
@@ -291,30 +301,53 @@ function MainPage() {
               outputHDF5Files.length === 0 ? (
                 <p>No HDF5 files available.</p>
               ) : (
-                <ul>
-                  {outputHDF5Files.map((file, index) => {
-                    const isDirectory = !file.includes('.');
-                    return (
-                      <li key={index}>
-                        {isDirectory ? (
-                          <span onClick={() => handleHDF5DirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
-                        ) : (
-                          <>
-                            <span onClick={() => openModal(`http://127.0.0.1:5000/output-files/${file}`)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>
-                            <button onClick={() => downloadFile(file)}>Download</button>
-                          </>
-                        )}
-                        {isDirectory && (
-                          <>
-                            <button onClick={() => downloadFolder(file)}>Download Folder</button>
-                            <button onClick={() => openImageGalleryModal(file)}>View Folder</button>
-                          </>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )
+                <>
+                 <table>
+                    {outputHDF5Files.map((file, index) => {
+                      const isDirectory = !file.includes('.');
+                      return (
+                        <tr key={index}>
+                          
+                          {isDirectory 
+                            ? <>
+                                <td>
+                                  <span onClick={() => handleHDF5DirectoryClick(file)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>  
+                                </td>
+                                <td style={{display: 'flex', alignItems: 'center'}}>
+                                  {<Tooltip title="Download Folder">
+                                      <IconButton>
+                                        <CloudDownloadIcon onClick={() => downloadFolder(file)} />  
+                                      </IconButton>
+                                    </Tooltip>
+                                  }
+                                  {<Tooltip title="View Folder">
+                                      <IconButton>
+                                        <VisibilityIcon onClick={() => openImageGalleryModal(file)}/>  
+                                      </IconButton>
+                                    </Tooltip>
+                                  }
+                                </td>
+                              </>
+                            : <>
+                                <td>
+                                  <span onClick={() => openModal(`http://127.0.0.1:5000/output-files/${file}`)} style={{ cursor: 'pointer', color: 'blue' }}>{file}</span>  
+                                </td>
+                                <td>
+                                  <Tooltip title="Download File">
+                                    <IconButton>
+                                      <CloudDownloadIcon onClick={() => downloadFile(file)}/>
+                                    </IconButton>
+                                  </Tooltip>
+                                </td>
+                              </>
+                            }
+                          
+                        </tr>
+                      )
+                    })}
+                 </table>
+                </>
+                )
             ) : (
               outputDICOMFiles.length === 0 ? (
                 <p>No DICOM files available.</p>
