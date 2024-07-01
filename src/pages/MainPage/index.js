@@ -289,7 +289,7 @@ function MainPage() {
               </Select>
             </FormControl>
             <CustomFileUpload files={selectedFile} setFiles={handleFileChange} accept={fileType === 'HDF5' ? '.h5,.hdf5' : '.zip'} disabled={uploadingFileLoading || !fileType} />
-            <Button onClick={handleUpload} variant="contained" style={{ width: '100%' }} disabled={!fileType || loading}>
+            <Button onClick={handleUpload} variant="contained" style={{ width: '100%' }} disabled={!fileType || uploadingFileLoading}>
               {uploadingFileLoading && <CircularProgress size={25}  style={{marginRight: '16px'}}/>} {uploadingFileLoading ? 'Uploading File' : 'Upload File'}
             </Button>
           </div>
