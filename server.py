@@ -64,7 +64,7 @@ def get_output_file(filename):
         folder_path = os.path.join(VISUALIZATION_FOLDER, filename)
         if os.path.isfile(first_file) and zipfile.is_zipfile(first_file):
             VISUALIZATION_FOLDER = 'outputView'
-            folder_path = os.path.join(VISUALIZATION_FOLDER, folder, filename)
+            folder_path = os.path.join(VISUALIZATION_FOLDER, filename)
             return send_file(folder_path)
     print("output file path: " + folder_path)
     return send_file(folder_path)
